@@ -7,58 +7,101 @@ import { TransactionType } from '@prisma/client';
 
 export function ReportGenerator() {
   const [isPending, startTransition] = useTransition();
-  const [report, setReport] = useState<ReportData[] | null>(null);
 
-  const handleGenerate = (period: 'day' | 'week' | 'month') => {
+  // 1. 🔥 Мы храним не 'null', а объект, чтобы знать, какой рапорт (доход/расход) мы показываем
+  const [report, setReport] = useState<{
+    data: ReportData[];
+    type: TransactionType;
+  } | null>(null);
+
+  // 2. 🔥 'handleGenerate' теперь принимает 2 параметра
+  const handleGenerate = (
+    period: 'day' | 'week' | 'month',
+    type: TransactionType
+  ) => {
     startTransition(async () => {
-      const data = await generateReport(period);
-      setReport(data);
+      const data = await generateReport(period, type);
+      // 3. Сохраняем и данные, и тип
+      setReport({ data: data, type: type });
     });
   };
 
-  // Форматтер нам все еще нужен, но для ДРУГИХ мест (если бы он был)
-  // const currencyFormatter = new Intl.NumberFormat('ka-GE', {
-  //   style: 'currency',
-  //   currency: 'GEL',
-  // });
+  // Форматтер валюты нам здесь не нужен
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md">
-      <h2 className="text-2xl font-semibold mb-4">Генератор рапортов</h2>
+    <div className="bg-white p-6 rounded-xl shadow-md space-y-6">
+      <h2 className="text-2xl font-semibold">Генератор рапортов</h2>
       {isPending && (
         <p className="text-sm text-gray-500 animate-pulse">
           Генерация рапорта...
         </p>
       )}
-      <div className="grid grid-cols-3 gap-4">
-        <button
-          onClick={() => handleGenerate('day')}
-          disabled={isPending}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-indigo-700 disabled:opacity-50"
-        >
-          День
-        </button>
-        <button
-          onClick={() => handleGenerate('week')}
-          disabled={isPending}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-indigo-700 disabled:opacity-50"
-        >
-          Неделя
-        </button>
-        <button
-          onClick={() => handleGenerate('month')}
-          disabled={isPending}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-indigo-700 disabled:opacity-50"
-        >
-          Месяц
-        </button>
+
+      {/* 4. 🔥 НОВЫЕ КНОПКИ (Блок Доходов) */}
+      <div>
+        <h3 className="text-lg font-medium mb-2">Рапорт по Доходам</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <button
+            onClick={() => handleGenerate('day', TransactionType.INCOME)}
+            disabled={isPending}
+            className="rounded-md bg-green-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-green-700 disabled:opacity-50"
+          >
+            День
+          </button>
+          <button
+            onClick={() => handleGenerate('week', TransactionType.INCOME)}
+            disabled={isPending}
+            className="rounded-md bg-green-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-green-700 disabled:opacity-50"
+          >
+            Неделя
+          </button>
+          <button
+            onClick={() => handleGenerate('month', TransactionType.INCOME)}
+            disabled={isPending}
+            className="rounded-md bg-green-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-green-700 disabled:opacity-50"
+          >
+            Месяц
+          </button>
+        </div>
       </div>
 
+      {/* 5. 🔥 НОВЫЕ КНОПКИ (Блок Расходов) */}
+      <div>
+        <h3 className="text-lg font-medium mb-2">Рапорт по Расходам</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <button
+            onClick={() => handleGenerate('day', TransactionType.EXPENSE)}
+            disabled={isPending}
+            className="rounded-md bg-red-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-red-700 disabled:opacity-50"
+          >
+            День
+          </button>
+          <button
+            onClick={() => handleGenerate('week', TransactionType.EXPENSE)}
+            disabled={isPending}
+            className="rounded-md bg-red-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-red-700 disabled:opacity-50"
+          >
+            Неделя
+          </button>
+          <button
+            onClick={() => handleGenerate('month', TransactionType.EXPENSE)}
+            disabled={isPending}
+            className="rounded-md bg-red-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-red-700 disabled:opacity-50"
+          >
+            Месяц
+          </button>
+        </div>
+      </div>
+
+      {/* 6. 🔥 Модальное окно (логика немного изменилась) */}
       {report && (
         <div className="fixed inset-0 bg-black/50 z-10 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col">
             <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-xl font-semibold">Рапорт сгенерирован</h3>
+              <h3 className="text-xl font-semibold">
+                {/* 7. Заголовок теперь динамический */}
+                Рапорт: {report.type === TransactionType.INCOME ? 'Доходы' : 'Расходы'}
+              </h3>
               <button
                 onClick={() => setReport(null)}
                 className="text-gray-400 hover:text-gray-700"
@@ -74,6 +117,7 @@ export function ReportGenerator() {
               </p>
               <table className="min-w-full divide-y divide-gray-200 border">
                 <thead className="bg-gray-50">
+                  {/* ... (Заголовки таблицы те же) ... */}
                   <tr>
                     <th className="p-2 border text-left text-xs font-medium text-gray-500 uppercase">
                       Дата
@@ -90,33 +134,27 @@ export function ReportGenerator() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {report.map((row, i) => (
+                  {/* 8. Определяем цвет ОДИН РАЗ */}
+                  {const isIncome = report.type === TransactionType.INCOME}
+                  
+                  {report.data.map((row, i) => (
                     <tr key={i}>
                       <td className="p-2 border whitespace-nowrap">
                         {row.date}
                       </td>
                       <td className="p-2 border">{row.category}</td>
                       <td className="p-2 border">{row.notes}</td>
-                      {/* 🔥 ВОТ ИЗМЕНЕНИЕ: */}
+                      {/* 9. Используем цвет (он будет одинаковый для всей таблицы) */}
                       <td
                         className={`p-2 border font-medium ${
-                          row.type === TransactionType.INCOME
-                            ? 'text-green-600'
-                            : 'text-red-600'
+                          isIncome ? 'text-green-600' : 'text-red-600'
                         }`}
                       >
-                        {/* Мы убрали 'currencyFormatter' и 'Number()'.
-                            Мы вставляем ЧИСТОЕ ЧИСЛО (как "50" или "-50").
-                            row.amount это Decimal, .toString() делает "50".
-                            .negated() делает из "50" -> "-50".
-                        */}
-                        {row.type === TransactionType.INCOME
-                          ? row.amount.toString()
-                          : row.amount.negated().toString()}
+                        {row.amount}
                       </td>
                     </tr>
                   ))}
-                  {report.length === 0 && (
+                  {report.data.length === 0 && (
                     <tr>
                       <td colSpan={4} className="p-4 text-center text-gray-500">
                         Нет данных за выбранный период.

@@ -6,6 +6,7 @@ import { TransactionType } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { Decimal } from '@prisma/client/runtime/library';
 
+// ... (Твой код deleteTransaction остается здесь без изменений) ...
 export async function deleteTransaction(
   transactionId: string,
   walletId: string,
@@ -38,16 +39,21 @@ export async function deleteTransaction(
   }
 }
 
+// --- 🔥 ИЗМЕНЕНИЯ НИЖЕ ---
+
+// Тип 'amount' по-прежнему 'string', т.к. мы готовим его для клиента
 export type ReportData = {
   category: string;
-  type: TransactionType;
+  type: TransactionType; // Мы все еще передаем 'type'
   notes: string;
-  amount: Decimal;
+  amount: string;
   date: string;
 };
 
+// 1. 🔥 Добавляем 'reportType' как ОБЯЗАТЕЛЬНЫЙ параметр
 export async function generateReport(
-  period: 'day' | 'week' | 'month'
+  period: 'day' | 'week' | 'month',
+  reportType: TransactionType // <-- НОВЫЙ ПАРАМЕТР
 ): Promise<ReportData[]> {
   const startDate = new Date();
   if (period === 'day') {
@@ -67,6 +73,11 @@ export async function generateReport(
       createdAt: {
         gte: startDate,
       },
+      // 2. 🔥 МЫ ФИЛЬТРУЕМ ПО ТИПУ!
+      // Ищем только транзакции с нужным типом категории
+      category: {
+        type: reportType,
+      },
     },
     include: {
       category: {
@@ -78,15 +89,21 @@ export async function generateReport(
     },
   });
 
-  const report: ReportData[] = transactions.map((tx) => ({
-    // 🔥 ВОТ ИЗМЕНЕНИЕ:
-    // .toLocaleString() заменен на .toLocaleDateString()
-    date: tx.createdAt.toLocaleDateString('ru-RU'),
-    category: tx.category.name,
-    type: tx.category.type,
-    notes: tx.notes || '',
-    amount: tx.amount,
-  }));
+  // 3. 🔥 Логика конвертации в строку остается той же
+  const report: ReportData[] = transactions.map((tx) => {
+    const amountString =
+      tx.category.type === TransactionType.INCOME
+        ? tx.amount.toString()
+        : tx.amount.negated().toString();
+
+    return {
+      date: tx.createdAt.toLocaleDateString('ru-RU'),
+      category: tx.category.name,
+      type: tx.category.type,
+      notes: tx.notes || '',
+      amount: amountString,
+    };
+  });
 
   return report;
 }
