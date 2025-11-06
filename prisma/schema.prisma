@@ -1,0 +1,50 @@
+// Файл: prisma/schema.prisma
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Тип категории: Доход или Расход
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model Wallet {
+  id    String @id @default(cuid())
+  name  String @unique // "Карта", "Наличные"
+  balance Decimal @default(0.0)
+
+  transactions Transaction[]
+}
+
+model Category {
+  id    String @id @default(cuid())
+  name  String @unique // "Ремонт", "Топливо", "Комиссия Bolt"
+  type  TransactionType
+
+  transactions Transaction[]
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  amount    Decimal
+  notes     String?
+  createdAt DateTime @default(now())
+
+  walletId String
+  wallet   Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([walletId])
+  @@index([categoryId])
+  @@index([createdAt])
+}
