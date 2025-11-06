@@ -30,7 +30,7 @@ export function ReportGenerator() {
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md space-y-6">
-      <h2 className="text-2xl font-semibold">Генератор рапортов</h2>
+      <h2 className="text-2xl font-semibold">რაპორტები</h2>
       {isPending && (
         <p className="text-sm text-gray-500 animate-pulse">
           Генерация рапорта...
@@ -39,56 +39,56 @@ export function ReportGenerator() {
 
       {/* 4. 🔥 НОВЫЕ КНОПКИ (Блок Доходов) */}
       <div>
-        <h3 className="text-lg font-medium mb-2">Рапорт по Доходам</h3>
+        <h3 className="text-lg font-medium mb-2">შემოსავლის რაპორტი</h3>
         <div className="grid grid-cols-3 gap-4">
           <button
             onClick={() => handleGenerate('day', TransactionType.INCOME)}
             disabled={isPending}
             className="rounded-md bg-green-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-green-700 disabled:opacity-50"
           >
-            День
+            დღიური
           </button>
           <button
             onClick={() => handleGenerate('week', TransactionType.INCOME)}
             disabled={isPending}
             className="rounded-md bg-green-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-green-700 disabled:opacity-50"
           >
-            Неделя
+            კვირეული
           </button>
           <button
             onClick={() => handleGenerate('month', TransactionType.INCOME)}
             disabled={isPending}
             className="rounded-md bg-green-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-green-700 disabled:opacity-50"
           >
-            Месяц
+            თვიური
           </button>
         </div>
       </div>
 
       {/* 5. 🔥 НОВЫЕ КНОПКИ (Блок Расходов) */}
       <div>
-        <h3 className="text-lg font-medium mb-2">Рапорт по Расходам</h3>
+        <h3 className="text-lg font-medium mb-2">ხარჯების რაპორტი</h3>
         <div className="grid grid-cols-3 gap-4">
           <button
             onClick={() => handleGenerate('day', TransactionType.EXPENSE)}
             disabled={isPending}
             className="rounded-md bg-red-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-red-700 disabled:opacity-50"
           >
-            День
+            დღიური
           </button>
           <button
             onClick={() => handleGenerate('week', TransactionType.EXPENSE)}
             disabled={isPending}
             className="rounded-md bg-red-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-red-700 disabled:opacity-50"
           >
-            Неделя
+            კვირეული
           </button>
           <button
             onClick={() => handleGenerate('month', TransactionType.EXPENSE)}
             disabled={isPending}
             className="rounded-md bg-red-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-red-700 disabled:opacity-50"
           >
-            Месяц
+            თვიური
           </button>
         </div>
       </div>
@@ -116,23 +116,22 @@ export function ReportGenerator() {
 
               <div className="p-4 overflow-auto">
                 <p className="text-sm text-gray-600 mb-2">
-                  Выделите таблицу (Ctrl+A / Cmd+A) и скопируйте (Ctrl+C /
-                  Cmd+C) в Excel.
+                აღნიშნეთ თაბულო მაუსით და დააკოპირეთ (Ctrl+C) ჩასვით Excel-ში (Ctrl+V).
                 </p>
                 <table className="min-w-full divide-y divide-gray-200 border">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="p-2 border text-left text-xs font-medium text-gray-500 uppercase">
-                        Дата
+                        თარიღი
                       </th>
                       <th className="p-2 border text-left text-xs font-medium text-gray-500 uppercase">
-                        Категория
+                        კატეგორია
                       </th>
                       <th className="p-2 border text-left text-xs font-medium text-gray-500 uppercase">
-                        Заметка
+                        დამატებითი ინფორმაცია
                       </th>
                       <th className="p-2 border text-left text-xs font-medium text-gray-500 uppercase">
-                        Сумма
+                        თანხა
                       </th>
                     </tr>
                   </thead>
@@ -157,7 +156,7 @@ export function ReportGenerator() {
                     {report.data.length === 0 && (
                       <tr>
                         <td colSpan={4} className="p-4 text-center text-gray-500">
-                          Нет данных за выбранный период.
+                          არჩეულ თარიღზე მონაცემები ვერ მოიძებნა.
                         </td>
                       </tr>
                     )}
@@ -170,7 +169,7 @@ export function ReportGenerator() {
                   onClick={() => setReport(null)}
                   className="rounded-md bg-gray-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-gray-700"
                 >
-                  Закрыть
+                  დახურვა
                 </button>
               </div>
             </div>

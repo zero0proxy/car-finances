@@ -33,13 +33,13 @@ export default async function HomePage() {
 
   return (
     <main className="container mx-auto max-w-2xl p-8 space-y-8">
-      <h1 className="text-4xl font-bold mb-6">Мои Финансы</h1>
+      <h1 className="text-4xl font-bold mb-6">MLT</h1>
 
       <IncomeStats />
 
       {/* Блок Кошельков */}
       <div className="bg-white p-6 rounded-xl shadow-md">
-        <h2 className="text-2xl font-semibold mb-4">Кошельки</h2>
+        <h2 className="text-2xl font-semibold mb-4">საფულეები</h2>
         <ul className="space-y-3">
           {wallets.map((wallet) => (
             <li

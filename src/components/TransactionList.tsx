@@ -40,7 +40,7 @@ export function TransactionList({
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md">
-      <h2 className="text-2xl font-semibold mb-4">Последние операции</h2>
+      <h2 className="text-2xl font-semibold mb-4">ბოლო ოპერაციები</h2>
       {isPending && (
         <p className="text-sm text-gray-500 text-center animate-pulse">
           Удаление операции...
@@ -48,7 +48,7 @@ export function TransactionList({
       )}
       <ul className="space-y-4">
         {transactions.length === 0 && (
-          <p className="text-gray-500">Пока нет ни одной операции.</p>
+          <p className="text-gray-500">ამჟამად არ არის არც ერთი ოპერაცია შესრულებული.</p>
         )}
 
         {visibleTransactions.map((tx) => {
@@ -65,7 +65,7 @@ export function TransactionList({
                   {tx.category.name}
                 </span>
                 <span className="text-sm text-gray-600">
-                  {tx.notes || <span className="italic">Нет заметки</span>}
+                  {tx.notes || <span className="italic">დამატებითი ინფორმაცია არ არის</span>}
                 </span>
                 <span className="text-xs text-gray-400 mt-1">
                   {new Date(tx.createdAt).toLocaleString('ru-RU')}

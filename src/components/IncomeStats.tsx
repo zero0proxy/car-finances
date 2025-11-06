@@ -57,12 +57,12 @@ export async function IncomeStats() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold">Доходы (Текущий месяц)</h2>
+      <h2 className="text-2xl font-semibold">შემოსავალი (ეს თვე)</h2>
 
       <div
         className={`${cardStyle} bg-gradient-to-r from-green-500 to-emerald-500 text-white`}
       >
-        <div className="text-sm font-medium opacity-80">Общий доход</div>
+        <div className="text-sm font-medium opacity-80">მთლიანი შემოსავალი</div>
         <div className="text-4xl font-bold">
           {currencyFormatter.format(Number(totalIncome))}
         </div>

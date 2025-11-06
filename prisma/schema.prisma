@@ -18,7 +18,7 @@ enum TransactionType {
 
 model Wallet {
   id    String @id @default(cuid())
-  name  String @unique // "Карта", "Наличные"
+  name  String @unique // "ბარათი", "ნაღდი"
   balance Decimal @default(0.0)
 
   transactions Transaction[]
@@ -26,7 +26,7 @@ model Wallet {
 
 model Category {
   id    String @id @default(cuid())
-  name  String @unique // "Ремонт", "Топливо", "Комиссия Bolt"
+  name  String @unique // "შეკეთება", "საწვავი", "საკომისიო Bolt"
   type  TransactionType
 
   transactions Transaction[]

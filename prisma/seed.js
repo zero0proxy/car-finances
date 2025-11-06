@@ -6,23 +6,23 @@ const prisma = new PrismaClient();
 // Список наших категорий
 const categories = [
   // Доходы (INCOME)
-  { name: 'Аренда автомобиля', type: TransactionType.INCOME },
-  { name: 'Комиссия Yandex', type: TransactionType.INCOME },
-  { name: 'Комиссия Bolt', type: TransactionType.INCOME },
+  { name: 'მანქანის ქირა', type: TransactionType.INCOME },
+  { name: 'იანდექსის საკომისიო', type: TransactionType.INCOME },
+  { name: 'ბოლტის საკომისიო', type: TransactionType.INCOME },
 
   // Расходы (EXPENSE)
-  { name: 'Ремонт автомобиля', type: TransactionType.EXPENSE },
-  { name: 'Техосмотр', type: TransactionType.EXPENSE },
-  { name: 'Топливо', type: TransactionType.EXPENSE },
-  { name: 'Покупка автомобиля', type: TransactionType.EXPENSE },
-  { name: 'Замена масла', type: TransactionType.EXPENSE },
-  { name: 'Зарплата сотрудникам', type: TransactionType.EXPENSE },
-  { name: 'Оплата аренды', type: TransactionType.EXPENSE },
-  { name: 'Коммунальные услуги', type: TransactionType.EXPENSE },
+  { name: 'მანქანის შეკეთება', type: TransactionType.EXPENSE },
+  { name: 'ტექ.დათვალიერება', type: TransactionType.EXPENSE },
+  { name: 'საწვავი', type: TransactionType.EXPENSE },
+  { name: 'ავტომობილის შეძენა', type: TransactionType.EXPENSE },
+  { name: 'ზეთის შეცვლა', type: TransactionType.EXPENSE },
+  { name: 'თანამშრომლების ანაზღაურება', type: TransactionType.EXPENSE },
+  { name: 'ოფისის ქირა', type: TransactionType.EXPENSE },
+  { name: 'კომუნალური ხარჯები', type: TransactionType.EXPENSE },
 ];
 
 // Список кошельков
-const wallets = [{ name: 'Карта' }, { name: 'Наличные' }];
+const wallets = [{ name: 'ბარათი' }, { name: 'ნაღდი' }];
 
 async function main() {
   console.log('Начинаем "посев" базы данных...');

@@ -80,12 +80,12 @@ export async function AddTransactionForm() {
       action={addTransaction}
       className="bg-white p-6 rounded-xl shadow-md space-y-4"
     >
-      <h2 className="text-2xl font-semibold">Добавить транзакцию</h2>
+      <h2 className="text-2xl font-semibold">ტრანზაქციის დამატება</h2>
 
       {/* Выбор суммы */}
       <div>
         <label htmlFor="amount" className="block text-sm font-medium">
-          Сумма
+          თანხა
         </label>
         <input
           type="number"
@@ -120,7 +120,7 @@ export async function AddTransactionForm() {
       {/* Выбор категории */}
       <div>
         <label htmlFor="categoryId" className="block text-sm font-medium">
-          Категория
+          კატეგორია
         </label>
         <select
           name="categoryId"
