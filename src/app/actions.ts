@@ -4,48 +4,32 @@
 import { prisma } from '@/lib/prisma';
 import { TransactionType } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
-// Нам нужен Decimal для безопасной работы с деньгами
 import { Decimal } from '@prisma/client/runtime/library';
 
 export async function deleteTransaction(
   transactionId: string,
   walletId: string,
-  amountString: string, // Мы получаем сумму как строку от клиента
-  type: TransactionType // Тип (INCOME или EXPENSE)
+  amountString: string,
+  type: TransactionType
 ) {
-  // 1. Конвертируем строку обратно в Decimal
   const amount = new Decimal(amountString);
-
-  // 2. Определяем, как мы будем "откатывать" баланс
-  // Если это был ДОХОД, мы должны ВЫЧЕСТЬ.
-  // Если это был РАСХОД, мы должны ПРИБАВИТЬ.
   const amountToReverse =
-    type === TransactionType.INCOME
-      ? amount.negated() // -amount
-      : amount; // +amount
+    type === TransactionType.INCOME ? amount.negated() : amount;
 
   try {
-    // 3. Запускаем $transaction (ОБЯЗАТЕЛЬНО)
-    // Это гарантирует, что либо ОБЕ операции пройдут, либо ОБЕ отменятся.
     await prisma.$transaction([
-      // Операция 1: Обновляем баланс кошелька
       prisma.wallet.update({
         where: { id: walletId },
         data: {
           balance: {
-            increment: amountToReverse, // Применяем "откат"
+            increment: amountToReverse,
           },
         },
       }),
-
-      // Операция 2: Удаляем саму транзакцию
       prisma.transaction.delete({
         where: { id: transactionId },
       }),
     ]);
-
-    // 4. Обновляем кэш всей страницы
-    // Это заставит Vercel заново загрузить все данные
     revalidatePath('/');
     return { success: true };
   } catch (error) {
@@ -54,9 +38,6 @@ export async function deleteTransaction(
   }
 }
 
-// --- 🔥 НОВЫЙ КОД НИЖЕ ---
-
-// Тип для нашего рапорта
 export type ReportData = {
   category: string;
   type: TransactionType;
@@ -65,30 +46,26 @@ export type ReportData = {
   date: string;
 };
 
-// Наша новая функция для генерации рапорта
 export async function generateReport(
   period: 'day' | 'week' | 'month'
 ): Promise<ReportData[]> {
-  // 1. Устанавливаем дату "с"
   const startDate = new Date();
   if (period === 'day') {
-    startDate.setHours(0, 0, 0, 0); // Начало сегодняшнего дня
+    startDate.setHours(0, 0, 0, 0);
   } else if (period === 'week') {
     const day = startDate.getDay();
-    // Находим начало недели (Понедельник)
     const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
     startDate.setDate(diff);
     startDate.setHours(0, 0, 0, 0);
   } else if (period === 'month') {
-    startDate.setDate(1); // 1-е число месяца
+    startDate.setDate(1);
     startDate.setHours(0, 0, 0, 0);
   }
 
-  // 2. Ищем транзакции в этом периоде
   const transactions = await prisma.transaction.findMany({
     where: {
       createdAt: {
-        gte: startDate, // 'greater than or equal' (больше или равно)
+        gte: startDate,
       },
     },
     include: {
@@ -97,14 +74,14 @@ export async function generateReport(
       },
     },
     orderBy: {
-      createdAt: 'asc', // Сортируем от старых к новым
+      createdAt: 'asc',
     },
   });
 
-  // 3. Форматируем в простой массив объектов,
-  // который легко превратить в таблицу
   const report: ReportData[] = transactions.map((tx) => ({
-    date: tx.createdAt.toLocaleString('ru-RU'),
+    // 🔥 ВОТ ИЗМЕНЕНИЕ:
+    // .toLocaleString() заменен на .toLocaleDateString()
+    date: tx.createdAt.toLocaleDateString('ru-RU'),
     category: tx.category.name,
     type: tx.category.type,
     notes: tx.notes || '',
