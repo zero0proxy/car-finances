@@ -19,8 +19,6 @@ export function TransactionList({
   transactions: TransactionWithDetails[];
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  // 3. 🔥 Hook для "плавного" UI.
-  // isPending будет 'true' во время удаления
   const [isPending, startTransition] = useTransition();
 
   const visibleCount = 5;
@@ -29,20 +27,15 @@ export function TransactionList({
     : transactions.slice(0, visibleCount);
   const showButton = transactions.length > visibleCount;
 
-  // 4. 🔥 Функция-обработчик для кнопки удаления
   const handleDelete = (
     txId: string,
     walletId: string,
-    amountString: string, // tx.amount приходит как string
+    amountString: string, // Наша Server Action ожидает string
     type: TransactionType
   ) => {
-    // Простое подтверждение, чтобы не удалить случайно
     if (!confirm('Вы уверены, что хотите удалить эту операцию?')) {
       return;
     }
-
-    // 5. 🔥 Оборачиваем Server Action в startTransition
-    // UI не "зависнет", а isPending станет 'true'
     startTransition(async () => {
       await deleteTransaction(txId, walletId, amountString, type);
     });
@@ -51,7 +44,6 @@ export function TransactionList({
   return (
     <div className="bg-white p-6 rounded-xl shadow-md">
       <h2 className="text-2xl font-semibold mb-4">Последние операции</h2>
-      {/* Показываем индикатор загрузки во время удаления */}
       {isPending && (
         <p className="text-sm text-gray-500 text-center animate-pulse">
           Удаление операции...
@@ -65,11 +57,10 @@ export function TransactionList({
         {visibleTransactions.map((tx) => {
           const isIncome = tx.category.type === TransactionType.INCOME;
           return (
-            // 6. 🔥 Добавили 'relative' и 'pr-10' (padding)
             <li
               key={tx.id}
               className={`relative flex justify-between items-center p-4 bg-gray-50 rounded-lg pr-10 ${
-                isPending ? 'opacity-50' : '' // Делаем полупрозрачным во время удаления
+                isPending ? 'opacity-50' : ''
               }`}
             >
               {/* Левая часть (без изменений) */}
@@ -101,18 +92,19 @@ export function TransactionList({
                 <span className="text-sm text-gray-500">{tx.wallet.name}</span>
               </div>
 
-              {/* 7. 🔥 Наша кнопка УДАЛЕНИЯ */}
+              {/* Кнопка УДАЛЕНИЯ */}
               <button
                 onClick={() =>
                   handleDelete(
                     tx.id,
                     tx.walletId,
-                    tx.amount as string, // tx.amount это string
+                    // 🔥 ВОТ ИСПРАВЛЕНИЕ:
+                    tx.amount.toString(), // Конвертируем Decimal в string
                     tx.category.type
                   )
                 }
                 title="Удалить операцию"
-                disabled={isPending} // Блокируем кнопку во время удаления
+                disabled={isPending}
                 className="absolute top-1/2 right-2 -translate-y-1/2 text-gray-400 hover:text-red-500 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-100 disabled:opacity-50"
               >
                 {/* Иконка 'X' */}
