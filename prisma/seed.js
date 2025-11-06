@@ -27,6 +27,10 @@ const wallets = [{ name: 'ბარათი' }, { name: 'ნაღდი' }];
 async function main() {
   console.log('ვიწყებთ მონაცემთა ბაზის შექმნა...');
 
+  await prisma.transaction.deleteMany({});
+  await prisma.category.deleteMany({});
+  await prisma.wallet.deleteMany({});
+
   // Создаем кошельки
   for (const wallet of wallets) {
     await prisma.wallet.upsert({
