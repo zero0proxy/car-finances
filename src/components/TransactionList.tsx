@@ -1,55 +1,78 @@
 // Файл: src/components/TransactionList.tsx
-
-// 1. 🔥 Это ОБЯЗАТЕЛЬНО. Превращаем в Клиентский Компонент
 'use client';
 
-// 2. Импортируем 'useState' для управления состоянием
-import { useState } from 'react';
-// 3. Импортируем типы, чтобы TypeScript "понимал" наши props
+// 1. Импортируем 'useState' и 'useTransition' (для плавности)
+import { useState, useTransition } from 'react';
 import { Transaction, Category, Wallet, TransactionType } from '@prisma/client';
+// 2. Импортируем наше новое "Действие"
+import { deleteTransaction } from '@/app/actions';
 
-// 4. Определяем тип для наших 'props' (транзакций)
+// Тип для наших props (не изменился)
 type TransactionWithDetails = Transaction & {
   category: Category;
   wallet: Wallet;
 };
 
-// 5. Компонент теперь ПРИНИМАЕТ 'transactions' как prop
 export function TransactionList({
   transactions,
 }: {
   transactions: TransactionWithDetails[];
 }) {
-  // 6. 🔥 Наше состояние: "развернут" ли список?
   const [isExpanded, setIsExpanded] = useState(false);
-  const visibleCount = 5; // Сколько операций показывать по умолчанию
+  // 3. 🔥 Hook для "плавного" UI.
+  // isPending будет 'true' во время удаления
+  const [isPending, startTransition] = useTransition();
 
-  // 7. Определяем, какие транзакции показывать
+  const visibleCount = 5;
   const visibleTransactions = isExpanded
-    ? transactions // Если "развернут",_показываем все
-    : transactions.slice(0, visibleCount); // Иначе - только первые 5
-
-  // 8. Нужно ли вообще показывать кнопку?
+    ? transactions
+    : transactions.slice(0, visibleCount);
   const showButton = transactions.length > visibleCount;
+
+  // 4. 🔥 Функция-обработчик для кнопки удаления
+  const handleDelete = (
+    txId: string,
+    walletId: string,
+    amountString: string, // tx.amount приходит как string
+    type: TransactionType
+  ) => {
+    // Простое подтверждение, чтобы не удалить случайно
+    if (!confirm('Вы уверены, что хотите удалить эту операцию?')) {
+      return;
+    }
+
+    // 5. 🔥 Оборачиваем Server Action в startTransition
+    // UI не "зависнет", а isPending станет 'true'
+    startTransition(async () => {
+      await deleteTransaction(txId, walletId, amountString, type);
+    });
+  };
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md">
       <h2 className="text-2xl font-semibold mb-4">Последние операции</h2>
+      {/* Показываем индикатор загрузки во время удаления */}
+      {isPending && (
+        <p className="text-sm text-gray-500 text-center animate-pulse">
+          Удаление операции...
+        </p>
+      )}
       <ul className="space-y-4">
-        {/* Если транзакций нет, покажем заглушку */}
         {transactions.length === 0 && (
           <p className="text-gray-500">Пока нет ни одной операции.</p>
         )}
 
-        {/* 9. 🔥 Мы используем 'visibleTransactions' для рендера */}
         {visibleTransactions.map((tx) => {
           const isIncome = tx.category.type === TransactionType.INCOME;
           return (
+            // 6. 🔥 Добавили 'relative' и 'pr-10' (padding)
             <li
               key={tx.id}
-              className="flex justify-between items-center p-4 bg-gray-50 rounded-lg"
+              className={`relative flex justify-between items-center p-4 bg-gray-50 rounded-lg pr-10 ${
+                isPending ? 'opacity-50' : '' // Делаем полупрозрачным во время удаления
+              }`}
             >
-              {/* Левая часть */}
+              {/* Левая часть (без изменений) */}
               <div className="flex flex-col">
                 <span className="font-semibold text-lg">
                   {tx.category.name}
@@ -58,12 +81,11 @@ export function TransactionList({
                   {tx.notes || <span className="italic">Нет заметки</span>}
                 </span>
                 <span className="text-xs text-gray-400 mt-1">
-                  {/* Форматируем дату */}
                   {new Date(tx.createdAt).toLocaleString('ru-RU')}
                 </span>
               </div>
 
-              {/* Правая часть */}
+              {/* Правая часть (без изменений) */}
               <div className="flex flex-col items-end">
                 <span
                   className={`text-xl font-bold ${
@@ -78,18 +100,51 @@ export function TransactionList({
                 </span>
                 <span className="text-sm text-gray-500">{tx.wallet.name}</span>
               </div>
+
+              {/* 7. 🔥 Наша кнопка УДАЛЕНИЯ */}
+              <button
+                onClick={() =>
+                  handleDelete(
+                    tx.id,
+                    tx.walletId,
+                    tx.amount as string, // tx.amount это string
+                    tx.category.type
+                  )
+                }
+                title="Удалить операцию"
+                disabled={isPending} // Блокируем кнопку во время удаления
+                className="absolute top-1/2 right-2 -translate-y-1/2 text-gray-400 hover:text-red-500 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-100 disabled:opacity-50"
+              >
+                {/* Иконка 'X' */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
             </li>
           );
         })}
       </ul>
 
-      {/* 10. 🔥 Наша новая кнопка! */}
+      {/* Кнопка "Показать/Свернуть" (без изменений) */}
       {showButton && (
         <button
-          onClick={() => setIsExpanded(!isExpanded)} // Переключаем состояние
+          onClick={() => setIsExpanded(!isExpanded)}
           className="w-full mt-4 pt-2 text-center font-medium text-indigo-600 hover:text-indigo-800"
         >
-          {isExpanded ? 'Свернуть' : `Показать еще ${transactions.length - visibleCount}`}
+          {isExpanded
+            ? 'Свернуть'
+            : `Показать еще ${transactions.length - visibleCount}`}
         </button>
       )}
     </div>
