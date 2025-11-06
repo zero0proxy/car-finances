@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma';
 import { AddTransactionForm } from '@/components/AddTransactionForm';
 import { TransactionList } from '@/components/TransactionList';
 import { IncomeStats } from '@/components/IncomeStats';
-// 1. Мы импортируем TransactionType здесь, он понадобится
 import { TransactionType } from '@prisma/client';
 
 // Функция getWallets остается без изменений
@@ -15,8 +14,7 @@ async function getWallets() {
   return wallets;
 }
 
-// 2. 🔥 МЫ ПЕРЕНЕСЛИ getTransactions СЮДА
-// Мы также убрали 'take: 10', чтобы загружать ВСЕ транзакции
+// МЫ ПЕРЕНЕСЛИ getTransactions СЮДА
 async function getTransactions() {
   const transactions = await prisma.transaction.findMany({
     orderBy: {
@@ -31,9 +29,9 @@ async function getTransactions() {
 }
 
 export default async function HomePage() {
-  // 3. Теперь мы загружаем и кошельки, и транзакции здесь
+  // Теперь мы загружаем и кошельки, и транзакции здесь
   const wallets = await getWallets();
-  const transactions = await getTransactions(); // <-- НОВОЕ
+  const transactions = await getTransactions();
 
   return (
     <main className="container mx-auto max-w-2xl p-8 space-y-8">
@@ -41,7 +39,7 @@ export default async function HomePage() {
 
       <IncomeStats />
 
-      {/* Блок Кошельков (без изменений) */}
+      {/* Блок Кошельков */}
       <div className="bg-white p-6 rounded-xl shadow-md">
         <h2 className="text-2xl font-semibold mb-4">Кошельки</h2>
         <ul className="space-y-3">
@@ -53,7 +51,10 @@ export default async function HomePage() {
               <span className="text-lg font-medium">{wallet.name}</span>
               <span
                 className={`text-xl font-bold ${
-                  wallet.balance < 0 ? 'text-red-600' : 'text-green-600'
+                  // 🔥 ВОТ ИСПРАВЛЕНИЕ:
+                  wallet.balance.isNegative()
+                    ? 'text-red-600'
+                    : 'text-green-600'
                 }`}
               >
                 {Number(wallet.balance).toLocaleString('ru-RU', {
@@ -68,7 +69,6 @@ export default async function HomePage() {
 
       <AddTransactionForm />
 
-      {/* 4. 🔥 МЫ ПЕРЕДАЕМ ТРАНЗАКЦИИ В КОМПОНЕНТ КАК PROP */}
       <TransactionList transactions={transactions} />
     </main>
   );
