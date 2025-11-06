@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Car Finances', // Я добавил заголовок
-  description: 'Приложение для учета финансов по автомобилям',
+  description: 'ფინანსური სტატისტიკა',
 };
 
 export default function RootLayout({

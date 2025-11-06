@@ -34,8 +34,8 @@ export async function deleteTransaction(
     revalidatePath('/');
     return { success: true };
   } catch (error) {
-    console.error('Ошибка при удалении транзакции:', error);
-    return { success: false, error: 'Не удалось удалить транзакцию' };
+    console.error('ტრანზაქციის წაშლისას მოხდა შეცდომა:', error);
+    return { success: false, error: 'ტრანზაქციის წამოშლა ვერ მოხერხდა' };
   }
 }
 

@@ -30,7 +30,7 @@ export function TransactionList({
     amountString: string,
     type: TransactionType
   ) => {
-    if (!confirm('Вы уверены, что хотите удалить эту операцию?')) {
+    if (!confirm('ნამდვილად გინდათ ოპერაციის ამოშლა?')) {
       return;
     }
     startTransition(async () => {
@@ -43,7 +43,7 @@ export function TransactionList({
       <h2 className="text-2xl font-semibold mb-4">ბოლო ოპერაციები</h2>
       {isPending && (
         <p className="text-sm text-gray-500 text-center animate-pulse">
-          Удаление операции...
+          ოპერაციის წაშლა...
         </p>
       )}
       <ul className="space-y-4">
@@ -96,7 +96,7 @@ export function TransactionList({
                     tx.category.type
                   )
                 }
-                title="Удалить операцию"
+                title="ოპერაციის წაშლა"
                 disabled={isPending}
                 className="absolute top-1/2 right-2 -translate-y-1/2 text-gray-400 hover:text-red-500 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-100 disabled:opacity-50"
               >
@@ -126,8 +126,8 @@ export function TransactionList({
           className="w-full mt-4 pt-2 text-center font-medium text-indigo-600 hover:text-indigo-800"
         >
           {isExpanded
-            ? 'Свернуть'
-            : `Показать еще ${transactions.length - visibleCount}`}
+            ? 'ჩაკეცვა'
+            : `მეტის ნახვა ${transactions.length - visibleCount}`}
         </button>
       )}
     </div>

@@ -35,7 +35,7 @@ export async function AddTransactionForm() {
     });
 
     if (!category) {
-      console.error('Категория не найдена');
+      console.error('კატეგორია არ მოიძებნა');
       return; // Ошибка
     }
 
@@ -70,7 +70,7 @@ export async function AddTransactionForm() {
       revalidatePath('/');
       
     } catch (error) {
-      console.error('Ошибка при добавлении транзакции:', error);
+      console.error('ტრანზაქციის დამატების დროს მოხდა შეცდომა:', error);
     }
   }
 
@@ -101,7 +101,7 @@ export async function AddTransactionForm() {
       {/* Выбор кошелька */}
       <div>
         <label htmlFor="walletId" className="block text-sm font-medium">
-          Кошелек
+          საფულე
         </label>
         <select
           name="walletId"
@@ -128,14 +128,14 @@ export async function AddTransactionForm() {
           required
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
         >
-          <optgroup label="Доходы">
+          <optgroup label="შემოსავალი">
             {incomeCategories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
               </option>
             ))}
           </optgroup>
-          <optgroup label="Расходы">
+          <optgroup label="ხარჯი">
             {expenseCategories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
@@ -148,14 +148,14 @@ export async function AddTransactionForm() {
       {/* Заметки */}
       <div>
         <label htmlFor="notes" className="block text-sm font-medium">
-          Заметки (необязательно)
+          დამატებითი ინფორმაცია (არაა აუცილებელი)
         </label>
         <input
           type="text"
           name="notes"
           id="notes"
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          placeholder="Заправил АИ-95"
+          placeholder="მაგ.ჯარიმა YJ175YJ"
         />
       </div>
 
@@ -163,7 +163,7 @@ export async function AddTransactionForm() {
         type="submit"
         className="w-full rounded-md bg-indigo-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-indigo-700"
       >
-        Добавить
+        დამატება
       </button>
     </form>
   );

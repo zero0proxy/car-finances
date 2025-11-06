@@ -33,7 +33,7 @@ export function ReportGenerator() {
       <h2 className="text-2xl font-semibold">რაპორტები</h2>
       {isPending && (
         <p className="text-sm text-gray-500 animate-pulse">
-          Генерация рапорта...
+          რაპორტი მზადდება...
         </p>
       )}
 
@@ -104,7 +104,7 @@ export function ReportGenerator() {
               <div className="flex justify-between items-center p-4 border-b">
                 <h3 className="text-xl font-semibold">
                   {/* 7. Заголовок теперь динамический */}
-                  Рапорт: {isIncome ? 'Доходы' : 'Расходы'}
+                  რაპორტი: {isIncome ? 'შემოსავალი' : 'ხარჯი'}
                 </h3>
                 <button
                   onClick={() => setReport(null)}

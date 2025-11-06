@@ -25,7 +25,7 @@ const categories = [
 const wallets = [{ name: 'ბარათი' }, { name: 'ნაღდი' }];
 
 async function main() {
-  console.log('Начинаем "посев" базы данных...');
+  console.log('ვიწყებთ მონაცემთა ბაზის შექმნა...');
 
   // Создаем кошельки
   for (const wallet of wallets) {
@@ -34,7 +34,7 @@ async function main() {
       update: {},
       create: { name: wallet.name, balance: 0.0 },
     });
-    console.log(`- Создан или найден кошелек: ${wallet.name}`);
+    console.log(`- შექმნილია ან ნაპოვნია საფულე: ${wallet.name}`);
   }
 
   // Создаем категории
@@ -44,10 +44,10 @@ async function main() {
       update: {}, // Если нашли - ничего не обновляем
       create: category, // Если не нашли - создаем
     });
-    console.log(`- Создана или найдена категория: ${category.name}`);
+    console.log(`- შექმნილია ან ნაპოვნია კატეგორია: ${category.name}`);
   }
 
-  console.log('Посев завершен.');
+  console.log('შექმნა წარმატებით დასრულდა.');
 }
 
 // Запускаем main и обрабатываем ошибки
