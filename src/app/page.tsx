@@ -5,8 +5,9 @@ import { AddTransactionForm } from '@/components/AddTransactionForm';
 import { TransactionList } from '@/components/TransactionList';
 import { IncomeStats } from '@/components/IncomeStats';
 import { TransactionType } from '@prisma/client';
+// 1. Импортируем наш новый компонент
+import { ReportGenerator } from '@/components/ReportGenerator';
 
-// Функция getWallets остается без изменений
 async function getWallets() {
   const wallets = await prisma.wallet.findMany({
     orderBy: { name: 'asc' },
@@ -14,7 +15,6 @@ async function getWallets() {
   return wallets;
 }
 
-// МЫ ПЕРЕНЕСЛИ getTransactions СЮДА
 async function getTransactions() {
   const transactions = await prisma.transaction.findMany({
     orderBy: {
@@ -29,7 +29,6 @@ async function getTransactions() {
 }
 
 export default async function HomePage() {
-  // Теперь мы загружаем и кошельки, и транзакции здесь
   const wallets = await getWallets();
   const transactions = await getTransactions();
 
@@ -51,7 +50,6 @@ export default async function HomePage() {
               <span className="text-lg font-medium">{wallet.name}</span>
               <span
                 className={`text-xl font-bold ${
-                  // 🔥 ВОТ ИСПРАВЛЕНИЕ:
                   wallet.balance.isNegative()
                     ? 'text-red-600'
                     : 'text-green-600'
@@ -66,6 +64,9 @@ export default async function HomePage() {
           ))}
         </ul>
       </div>
+
+      {/* 2. Добавляем генератор рапортов */}
+      <ReportGenerator />
 
       <AddTransactionForm />
 

@@ -53,3 +53,63 @@ export async function deleteTransaction(
     return { success: false, error: 'Не удалось удалить транзакцию' };
   }
 }
+
+// --- 🔥 НОВЫЙ КОД НИЖЕ ---
+
+// Тип для нашего рапорта
+export type ReportData = {
+  category: string;
+  type: TransactionType;
+  notes: string;
+  amount: Decimal;
+  date: string;
+};
+
+// Наша новая функция для генерации рапорта
+export async function generateReport(
+  period: 'day' | 'week' | 'month'
+): Promise<ReportData[]> {
+  // 1. Устанавливаем дату "с"
+  const startDate = new Date();
+  if (period === 'day') {
+    startDate.setHours(0, 0, 0, 0); // Начало сегодняшнего дня
+  } else if (period === 'week') {
+    const day = startDate.getDay();
+    // Находим начало недели (Понедельник)
+    const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+    startDate.setDate(diff);
+    startDate.setHours(0, 0, 0, 0);
+  } else if (period === 'month') {
+    startDate.setDate(1); // 1-е число месяца
+    startDate.setHours(0, 0, 0, 0);
+  }
+
+  // 2. Ищем транзакции в этом периоде
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      createdAt: {
+        gte: startDate, // 'greater than or equal' (больше или равно)
+      },
+    },
+    include: {
+      category: {
+        select: { name: true, type: true },
+      },
+    },
+    orderBy: {
+      createdAt: 'asc', // Сортируем от старых к новым
+    },
+  });
+
+  // 3. Форматируем в простой массив объектов,
+  // который легко превратить в таблицу
+  const report: ReportData[] = transactions.map((tx) => ({
+    date: tx.createdAt.toLocaleString('ru-RU'),
+    category: tx.category.name,
+    type: tx.category.type,
+    notes: tx.notes || '',
+    amount: tx.amount,
+  }));
+
+  return report;
+}
