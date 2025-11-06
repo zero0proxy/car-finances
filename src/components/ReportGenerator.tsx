@@ -16,11 +16,11 @@ export function ReportGenerator() {
     });
   };
 
-  // Форматтер для валюты
-  const currencyFormatter = new Intl.NumberFormat('ka-GE', {
-    style: 'currency',
-    currency: 'GEL', // <-- ИЗМЕНЕНО
-  });
+  // Форматтер нам все еще нужен, но для ДРУГИХ мест (если бы он был)
+  // const currencyFormatter = new Intl.NumberFormat('ka-GE', {
+  //   style: 'currency',
+  //   currency: 'GEL',
+  // });
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md">
@@ -81,7 +81,7 @@ export function ReportGenerator() {
                     <th className="p-2 border text-left text-xs font-medium text-gray-500 uppercase">
                       Категория
                     </th>
-                    <th className="p-2 border text-left text-xs font-GEL-500 uppercase">
+                    <th className="p-2 border text-left text-xs font-medium text-gray-500 uppercase">
                       Заметка
                     </th>
                     <th className="p-2 border text-left text-xs font-medium text-gray-500 uppercase">
@@ -97,6 +97,7 @@ export function ReportGenerator() {
                       </td>
                       <td className="p-2 border">{row.category}</td>
                       <td className="p-2 border">{row.notes}</td>
+                      {/* 🔥 ВОТ ИЗМЕНЕНИЕ: */}
                       <td
                         className={`p-2 border font-medium ${
                           row.type === TransactionType.INCOME
@@ -104,8 +105,14 @@ export function ReportGenerator() {
                             : 'text-red-600'
                         }`}
                       >
-                        {row.type === TransactionType.INCOME ? '+' : '-'}
-                        {currencyFormatter.format(Number(row.amount))}
+                        {/* Мы убрали 'currencyFormatter' и 'Number()'.
+                            Мы вставляем ЧИСТОЕ ЧИСЛО (как "50" или "-50").
+                            row.amount это Decimal, .toString() делает "50".
+                            .negated() делает из "50" -> "-50".
+                        */}
+                        {row.type === TransactionType.INCOME
+                          ? row.amount.toString()
+                          : row.amount.negated().toString()}
                       </td>
                     </tr>
                   ))}
