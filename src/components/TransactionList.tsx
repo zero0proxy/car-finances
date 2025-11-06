@@ -1,13 +1,10 @@
 // Файл: src/components/TransactionList.tsx
 'use client';
 
-// 1. Импортируем 'useState' и 'useTransition' (для плавности)
 import { useState, useTransition } from 'react';
 import { Transaction, Category, Wallet, TransactionType } from '@prisma/client';
-// 2. Импортируем наше новое "Действие"
 import { deleteTransaction } from '@/app/actions';
 
-// Тип для наших props (не изменился)
 type TransactionWithDetails = Transaction & {
   category: Category;
   wallet: Wallet;
@@ -30,7 +27,7 @@ export function TransactionList({
   const handleDelete = (
     txId: string,
     walletId: string,
-    amountString: string, // Наша Server Action ожидает string
+    amountString: string,
     type: TransactionType
   ) => {
     if (!confirm('Вы уверены, что хотите удалить эту операцию?')) {
@@ -63,7 +60,6 @@ export function TransactionList({
                 isPending ? 'opacity-50' : ''
               }`}
             >
-              {/* Левая часть (без изменений) */}
               <div className="flex flex-col">
                 <span className="font-semibold text-lg">
                   {tx.category.name}
@@ -76,7 +72,6 @@ export function TransactionList({
                 </span>
               </div>
 
-              {/* Правая часть (без изменений) */}
               <div className="flex flex-col items-end">
                 <span
                   className={`text-xl font-bold ${
@@ -84,22 +79,20 @@ export function TransactionList({
                   }`}
                 >
                   {isIncome ? '+' : '-'}
-                  {Number(tx.amount).toLocaleString('ru-RU', {
+                  {Number(tx.amount).toLocaleString('ka-GE', {
                     style: 'currency',
-                    currency: 'RUB',
+                    currency: 'GEL', // <-- ИЗМЕНЕНО
                   })}
                 </span>
                 <span className="text-sm text-gray-500">{tx.wallet.name}</span>
               </div>
 
-              {/* Кнопка УДАЛЕНИЯ */}
               <button
                 onClick={() =>
                   handleDelete(
                     tx.id,
                     tx.walletId,
-                    // 🔥 ВОТ ИСПРАВЛЕНИЕ:
-                    tx.amount.toString(), // Конвертируем Decimal в string
+                    tx.amount.toString(),
                     tx.category.type
                   )
                 }
@@ -107,7 +100,6 @@ export function TransactionList({
                 disabled={isPending}
                 className="absolute top-1/2 right-2 -translate-y-1/2 text-gray-400 hover:text-red-500 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-100 disabled:opacity-50"
               >
-                {/* Иконка 'X' */}
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -128,7 +120,6 @@ export function TransactionList({
         })}
       </ul>
 
-      {/* Кнопка "Показать/Свернуть" (без изменений) */}
       {showButton && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}

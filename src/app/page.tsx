@@ -5,7 +5,6 @@ import { AddTransactionForm } from '@/components/AddTransactionForm';
 import { TransactionList } from '@/components/TransactionList';
 import { IncomeStats } from '@/components/IncomeStats';
 import { TransactionType } from '@prisma/client';
-// 1. Импортируем наш новый компонент
 import { ReportGenerator } from '@/components/ReportGenerator';
 
 async function getWallets() {
@@ -55,9 +54,9 @@ export default async function HomePage() {
                     : 'text-green-600'
                 }`}
               >
-                {Number(wallet.balance).toLocaleString('ru-RU', {
+                {Number(wallet.balance).toLocaleString('ka-GE', {
                   style: 'currency',
-                  currency: 'RUB',
+                  currency: 'GEL', // <-- ИЗМЕНЕНО
                 })}
               </span>
             </li>
@@ -65,7 +64,6 @@ export default async function HomePage() {
         </ul>
       </div>
 
-      {/* 2. Добавляем генератор рапортов */}
       <ReportGenerator />
 
       <AddTransactionForm />
