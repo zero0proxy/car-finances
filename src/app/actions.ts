@@ -160,13 +160,17 @@ export async function syncYandexDrivers(): Promise<{ success: boolean; message: 
     for (const profile of profiles) {
       const driverData = profile.driver_profile;
       
-      // Имя и Фамилия + ID
       const fullName = `${driverData.first_name || ''} ${driverData.last_name || ''}`.trim();
       const phoneNumber = driverData.phones[0]?.number;
 
-      // Используем upsert: ищем по yandexId, если находим - обновляем, если нет - создаем
+      // 🔥 ИСПРАВЛЕНИЕ: Добавляем блок 'select' для получения createdAt и updatedAt
       const result = await prisma.driver.upsert({
         where: { yandexId: driverData.id },
+        select: {
+          id: true, // Всегда возвращаем ID
+          createdAt: true, // <--- ЭТО ПОЛЕ НАМ НУЖНО
+          updatedAt: true, // <--- И ЭТО ТОЖЕ
+        },
         update: {
           name: fullName,
           phone: phoneNumber,
