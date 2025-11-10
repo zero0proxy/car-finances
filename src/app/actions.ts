@@ -133,8 +133,9 @@ export async function syncYandexDrivers(): Promise<{ success: boolean; message: 
       method: 'POST',
       headers: {
         'Accept-Language': 'ru',
-        'X-Park-ID': YANDEX_PARK_ID, // 🔥 ИСПРАВЛЕНО: было X-Client-ID
-        'X-API-Key': YANDEX_API_KEY, // 🔥 ИСПРАВЛЕНО: было X-Api-Key
+        'X-Park-ID': YANDEX_PARK_ID, // Твоя успешная находка
+        'X-Client-ID': YANDEX_PARK_ID, // Добавлен обратно для устранения ошибки 401
+        'X-API-Key': YANDEX_API_KEY,  // Твоя успешная находка (правильный регистр)
         'Content-Type': 'application/json',
       },
       // 2. Тело запроса, чтобы получить все активные профили
