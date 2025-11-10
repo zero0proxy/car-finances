@@ -5,14 +5,33 @@ import { prisma } from '@/lib/prisma';
 import { TransactionType } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { Decimal } from '@prisma/client/runtime/library';
+import { Driver } from '@prisma/client'; // Импортируем новую модель Driver
 
-// ... (Твой код deleteTransaction остается здесь без изменений) ...
+// --- 🔥 YANDEX API КОНСТАНТЫ 🔥 ---
+// Внимание: В реальном проекте используйте process.env для скрытия ключей!
+const YANDEX_PARK_ID = 'e401f44327704c4f925abfabd07c6e86'; 
+const YANDEX_API_KEY = 'CEyTqBABdsgHugLBmHjEHOcWjbSfyHWP';
+const YANDEX_BASE_URL = 'https://fleet-api.taxi.yandex.net';
+
+// Вспомогательный тип для ответа API (упрощенный)
+type YandexDriverProfile = {
+  driver_profile: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    phones: { number: string }[];
+  };
+};
+
+// --- ОСНОВНЫЕ СЕРВЕРНЫЕ ДЕЙСТВИЯ ---
+
 export async function deleteTransaction(
   transactionId: string,
   walletId: string,
   amountString: string,
   type: TransactionType
 ) {
+  // ... (логика deleteTransaction остается без изменений) ...
   const amount = new Decimal(amountString);
   const amountToReverse =
     type === TransactionType.INCOME ? amount.negated() : amount;
@@ -34,27 +53,24 @@ export async function deleteTransaction(
     revalidatePath('/');
     return { success: true };
   } catch (error) {
-    console.error('ტრანზაქციის წაშლისას მოხდა შეცდომა:', error);
-    return { success: false, error: 'ტრანზაქციის წამოშლა ვერ მოხერხდა' };
+    console.error('Ошибка при удалении транзакции:', error);
+    return { success: false, error: 'Не удалось удалить транзакцию' };
   }
 }
 
-// --- 🔥 ИЗМЕНЕНИЯ НИЖЕ ---
-
-// Тип 'amount' по-прежнему 'string', т.к. мы готовим его для клиента
 export type ReportData = {
   category: string;
-  type: TransactionType; // Мы все еще передаем 'type'
+  type: TransactionType;
   notes: string;
   amount: string;
   date: string;
 };
 
-// 1. 🔥 Добавляем 'reportType' как ОБЯЗАТЕЛЬНЫЙ параметр
 export async function generateReport(
   period: 'day' | 'week' | 'month',
-  reportType: TransactionType // <-- НОВЫЙ ПАРАМЕТР
+  reportType: TransactionType
 ): Promise<ReportData[]> {
+  // ... (логика generateReport остается без изменений) ...
   const startDate = new Date();
   if (period === 'day') {
     startDate.setHours(0, 0, 0, 0);
@@ -73,8 +89,6 @@ export async function generateReport(
       createdAt: {
         gte: startDate,
       },
-      // 2. 🔥 МЫ ФИЛЬТРУЕМ ПО ТИПУ!
-      // Ищем только транзакции с нужным типом категории
       category: {
         type: reportType,
       },
@@ -89,7 +103,6 @@ export async function generateReport(
     },
   });
 
-  // 3. 🔥 Логика конвертации в строку остается той же
   const report: ReportData[] = transactions.map((tx) => {
     const amountString =
       tx.category.type === TransactionType.INCOME
@@ -106,4 +119,83 @@ export async function generateReport(
   });
 
   return report;
+}
+
+
+// --- 🔥 НОВАЯ ACTION ДЛЯ СИНХРОНИЗАЦИИ ВОДИТЕЛЕЙ 🔥 ---
+
+export async function syncYandexDrivers(): Promise<{ success: boolean; message: string }> {
+  try {
+    const url = `${YANDEX_BASE_URL}/v1/parks/driver-profiles/list`;
+
+    // 1. Запрос к Yandex API для получения списка водителей
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept-Language': 'ru',
+        'X-Client-ID': YANDEX_PARK_ID, // Здесь должно быть только e401...
+        'X-Api-Key': YANDEX_API_KEY, 
+        'Content-Type': 'application/json',
+      },
+      // 2. Тело запроса, чтобы получить все активные профили
+      body: JSON.stringify({
+        query: {
+            park: { id: YANDEX_PARK_ID, driver_profile: {} },
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Ошибка API Yandex: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const profiles: YandexDriverProfile[] = data.driver_profiles || [];
+
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    // 3. Массовое обновление/создание водителей в твоей базе
+    for (const profile of profiles) {
+      const driverData = profile.driver_profile;
+      
+      // Имя и Фамилия + ID
+      const fullName = `${driverData.first_name || ''} ${driverData.last_name || ''}`.trim();
+      const phoneNumber = driverData.phones[0]?.number;
+
+      // Используем upsert: ищем по yandexId, если находим - обновляем, если нет - создаем
+      const result = await prisma.driver.upsert({
+        where: { yandexId: driverData.id },
+        update: {
+          name: fullName,
+          phone: phoneNumber,
+        },
+        create: {
+          yandexId: driverData.id,
+          name: fullName,
+          phone: phoneNumber,
+        },
+      });
+
+      if (result.createdAt.getTime() === result.updatedAt.getTime()) {
+        createdCount++;
+      } else {
+        updatedCount++;
+      }
+    }
+
+    revalidatePath('/');
+    return {
+      success: true,
+      message: `Синхронизация завершена. Создано: ${createdCount}, Обновлено: ${updatedCount} водителей.`,
+    };
+
+  } catch (error: any) {
+    console.error('Ошибка синхронизации с Yandex:', error);
+    return {
+      success: false,
+      message: `Сбой синхронизации: ${error.message || 'Неизвестная ошибка.'}`,
+    };
+  };
 }

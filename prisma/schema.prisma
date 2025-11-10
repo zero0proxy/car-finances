@@ -43,8 +43,22 @@ model Transaction {
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  
+  // 🔥 НОВЫЕ ПОЛЯ: Водитель (ОПЦИОНАЛЬНО, потому что не все транзакции от водителей)
+  driverId  String?
+  driver    Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
 
   @@index([walletId])
   @@index([categoryId])
   @@index([createdAt])
+  @@index([driverId]) // 🔥 НОВЫЙ ИНДЕКС
+}
+
+model Driver {
+  id              String         @id @default(cuid())
+  yandexId        String?        @unique // ID водителя в Яндекс.Про
+  name            String // Имя водителя
+  phone           String? // Телефон
+  
+  transactions    Transaction[] // Транзакции, связанные с этим водителем
 }
