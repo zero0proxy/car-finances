@@ -9,7 +9,8 @@ import { Driver } from '@prisma/client'; // Импортируем новую м
 
 // --- 🔥 YANDEX API КОНСТАНТЫ 🔥 ---
 // Внимание: В реальном проекте используйте process.env для скрытия ключей!
-const YANDEX_PARK_ID = 'e401f44327704c4f925abfabd07c6e86'; 
+const YANDEX_FULL_CLID = 'taxi/park/e401f44327704c4f925abfabd07c6e86'; // Полный CLID
+const YANDEX_PARK_ID = 'e401f44327704c4f925abfabd07c6e86'; // Чистый ID парка
 const YANDEX_API_KEY = 'CEyTqBABdsgHugLBmHjEHOcWjbSfyHWP';
 const YANDEX_BASE_URL = 'https://fleet-api.taxi.yandex.net';
 
@@ -136,8 +137,8 @@ export async function syncYandexDrivers(): Promise<{ success: boolean; message: 
         'X-Park-ID': YANDEX_PARK_ID,
         'X-Client-ID': YANDEX_PARK_ID,
         'X-API-Key': YANDEX_API_KEY, 
-        // 🔥 НОВЫЙ ЗАГОЛОВОК АВТОРИЗАЦИИ
-        'Authorization': `Bearer ${YANDEX_API_KEY}`, 
+        // 🔥 НОВЫЙ ТОКЕН: используем полный CLID
+        'Authorization': `Bearer ${YANDEX_FULL_CLID}`, 
         'Content-Type': 'application/json',
       },
       // 2. Тело запроса, чтобы получить все активные профили
