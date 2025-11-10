@@ -56,9 +56,13 @@ model Transaction {
 
 model Driver {
   id              String         @id @default(cuid())
-  yandexId        String?        @unique // ID водителя в Яндекс.Про
-  name            String // Имя водителя
-  phone           String? // Телефон
+  yandexId        String?        @unique
+  name            String
+  phone           String?
   
-  transactions    Transaction[] // Транзакции, связанные с этим водителем
+  // 🔥🔥🔥 НОВЫЕ ПОЛЯ (Системные) 🔥🔥🔥
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt 
+
+  transactions    Transaction[]
 }
