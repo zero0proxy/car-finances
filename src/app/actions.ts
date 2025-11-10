@@ -131,23 +131,20 @@ export async function syncYandexDrivers(): Promise<{ success: boolean; message: 
 
     // 1. Запрос к Yandex API для получения списка водителей
     const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Accept-Language': 'ru',
-        'X-Park-ID': YANDEX_PARK_ID,
-        'X-Client-ID': YANDEX_PARK_ID,
-        'X-API-Key': YANDEX_API_KEY, 
-        // 🔥 НОВЫЙ ТОКЕН: используем полный CLID
-        'Authorization': `Bearer ${YANDEX_FULL_CLID}`, 
-        'Content-Type': 'application/json',
-      },
-      // 2. Тело запроса, чтобы получить все активные профили
-      body: JSON.stringify({
-        query: {
-            park: { id: YANDEX_PARK_ID, driver_profile: {} },
-        },
-      }),
-    });
+  method: 'POST',
+  headers: {
+    'Accept-Language': 'ru',
+    'X-Park-ID': YANDEX_PARK_ID,
+    'X-Client-ID': YANDEX_FULL_CLID,  // ← Полный CLID (taxi/park/...)
+    'X-API-Key': YANDEX_API_KEY,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    query: {
+      park: { id: YANDEX_PARK_ID },
+    },
+  }),
+});
 
     if (!response.ok) {
       const errorText = await response.text();
