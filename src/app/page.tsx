@@ -6,8 +6,9 @@ import { TransactionList } from '@/components/TransactionList';
 import { IncomeStats } from '@/components/IncomeStats';
 import { TransactionType } from '@prisma/client';
 import { ReportGenerator } from '@/components/ReportGenerator';
-// 1. Импортируем новый компонент
-import { YandexSyncButton } from '@/components/YandexSyncButton'; 
+import { YandexSyncButton } from '@/components/YandexSyncButton';
+// 1. Импортируем новую кнопку
+import { YandexSyncTransactionsButton } from '@/components/YandexSyncTransactionsButton';
 
 async function getWallets() {
   const wallets = await prisma.wallet.findMany({
@@ -66,8 +67,9 @@ export default async function HomePage() {
         </ul>
       </div>
 
-      {/* 2. Добавляем кнопку синхронизации Yandex */}
       <YandexSyncButton />
+      {/* 2. Добавляем новую кнопку */}
+      <YandexSyncTransactionsButton />
       
       <ReportGenerator />
 

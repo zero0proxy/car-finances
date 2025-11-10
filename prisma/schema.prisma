@@ -38,6 +38,9 @@ model Transaction {
   notes     String?
   createdAt DateTime @default(now())
 
+  // --- 🔥 НОВОЕ ПОЛЕ (ДЛЯ ПРЕДОТВРАЩЕНИЯ ДУБЛИКАТОВ) ---
+  yandexTransactionId String? @unique
+
   walletId String
   wallet   Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
@@ -52,6 +55,7 @@ model Transaction {
   @@index([categoryId])
   @@index([createdAt])
   @@index([driverId]) // 🔥 НОВЫЙ ИНДЕКС
+  @@index([yandexTransactionId])
 }
 
 model Driver {
