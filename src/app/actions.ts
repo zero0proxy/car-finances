@@ -63,6 +63,7 @@ export type ReportData = {
   date: string;
 };
 
+// --- ОТЧЁТЫ (ИСПРАВЛЕНО: проверка на null) ---
 export async function generateReport(
   period: 'day' | 'week' | 'month',
   reportType: TransactionType
@@ -74,22 +75,26 @@ export async function generateReport(
       yandexEarningKey: null,
       category: { type: reportType },
     },
-    include: { category: { select: { name: true, type: true } } },
+    include: { category: true },
     orderBy: { createdAt: 'asc' },
   });
-  return transactions.map((tx) => {
-    const amountString =
-      tx.category.type === TransactionType.INCOME
+
+  return transactions
+    .filter(tx => tx.category !== null) // ФИЛЬТР: убираем null
+    .map((tx) => {
+      const isIncome = tx.category!.type === TransactionType.INCOME;
+      const amountString = isIncome
         ? tx.amount.toString()
         : tx.amount.negated().toString();
-    return {
-      date: tx.createdAt.toLocaleDateString('ru-RU'),
-      category: tx.category.name,
-      type: tx.category.type,
-      notes: tx.notes || '',
-      amount: amountString,
-    };
-  });
+
+      return {
+        date: tx.createdAt.toLocaleDateString('ka-GE'),
+        category: tx.category!.name,
+        type: tx.category!.type,
+        notes: tx.notes || '',
+        amount: amountString,
+      };
+    });
 }
 
 // --- СИНХРОНИЗАЦИЯ ВОДИТЕЛЕЙ (без изменений) ---
@@ -376,13 +381,16 @@ export async function generateCommissionReport(
   const startDate = getPeriodStart(period);
 
   const transactions = await prisma.transaction.findMany({
-    where: {
-      createdAt: { gte: startDate },
-      category: { name: 'იანდექსის საკომისიო' },
-      driverId: { not: null },
-    },
-    include: { driver: true },
-  });
+  where: {
+    createdAt: { gte: startDate },
+    category: { name: 'იანდექსის საკომისიო' },
+    driverId: { not: null },
+  },
+  include: { driver: true, category: true },
+});
+
+// ФИЛЬТР:
+.filter(tx => tx.category !== null && tx.driver !== null)
 
   const byDriver = new Map<string, Decimal>();
   for (const tx of transactions) {
