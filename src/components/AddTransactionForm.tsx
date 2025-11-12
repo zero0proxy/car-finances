@@ -1,88 +1,54 @@
-// Файл: src/components/AddTransactionForm.tsx
+// src/components/AddTransactionForm.tsx (обновлённая версия)
+'use client';
 
-import { prisma } from '@/lib/prisma';
-import { TransactionType } from '@prisma/client';
-import { revalidatePath } from 'next/cache';
+import { useState, useTransition, useRef } from 'react';
+import { addTransaction } from '@/app/actions';
 
-// Компонент по-прежнему загружает данные для ВЫПАДАЮЩИХ СПИСКОВ
-export async function AddTransactionForm() {
-  const wallets = await prisma.wallet.findMany();
-  const categories = await prisma.category.findMany();
+export function AddTransactionForm({
+  wallets,
+  incomeCategories,
+  expenseCategories,
+}: {
+  wallets: { id: string; name: string }[];
+  incomeCategories: { id: string; name: string }[];
+  expenseCategories: { id: string; name: string }[];
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [showSuccess, setShowSuccess] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const incomeCategories = categories.filter(
-    (cat) => cat.type === TransactionType.INCOME
+  // ФИЛЬТР: Убираем "იანდექსის საკომისიო" из доходов
+  const filteredIncomeCategories = incomeCategories.filter(
+    cat => cat.name !== 'იანდექსის საკომისიო'
   );
-  const expenseCategories = categories.filter(
-    (cat) => cat.type === TransactionType.EXPENSE
-  );
 
-  // 🔥 НАШЕ СЕРВЕРНОЕ ДЕЙСТВИЕ (SERVER ACTION) 🔥
-  async function addTransaction(formData: FormData) {
-    'use server'; 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
 
-    // 1. Получаем данные из формы
-    const amount = Number(formData.get('amount'));
-    const notes = formData.get('notes') as string;
-    const walletId = formData.get('walletId') as string;
-    const categoryId = formData.get('categoryId') as string;
-
-    // 2. 🔥 ИСПРАВЛЕНИЕ:
-    // Мы больше не используем 'categories.find()'.
-    // Вместо этого Server Action САМ обращается к базе данных,
-    // чтобы быть полностью автономным.
-    const category = await prisma.category.findUnique({
-      where: { id: categoryId },
+    startTransition(async () => {
+      await addTransaction(formData);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+      formRef.current?.reset();
     });
+  };
 
-    if (!category) {
-      console.error('კატეგორია არ მოიძებნა');
-      return; // Ошибка
-    }
-
-    // 3. Определяем, прибавляем мы или вычитаем
-    const amountToUpdate =
-      category.type === TransactionType.INCOME ? amount : -amount;
-
-    // 4. Выполняем 2 запроса в базе данных в ОДНОЙ транзакции
-    try {
-      await prisma.$transaction([
-        // Запрос 1: Создаем саму транзакцию
-        prisma.transaction.create({
-          data: {
-            amount: amount,
-            notes: notes,
-            walletId: walletId,
-            categoryId: categoryId,
-          },
-        }),
-        // Запрос 2: Обновляем баланс кошелька
-        prisma.wallet.update({
-          where: { id: walletId },
-          data: {
-            balance: {
-              increment: amountToUpdate, // Прибавляем (или вычитаем)
-            },
-          },
-        }),
-      ]);
-
-      // 5. Говорим Next.js обновить главную страницу
-      revalidatePath('/');
-      
-    } catch (error) {
-      console.error('ტრანზაქციის დამატების დროს მოხდა შეცდომა:', error);
-    }
-  }
-
-  // JSX остается точно таким же
   return (
     <form
-      action={addTransaction}
+      ref={formRef}
+      onSubmit={handleSubmit}
       className="bg-white p-6 rounded-xl shadow-md space-y-4"
     >
       <h2 className="text-2xl font-semibold">ტრანზაქციის დამატება</h2>
 
-      {/* Выбор суммы */}
+      {showSuccess && (
+        <div className="bg-green-100 text-green-800 p-2 rounded text-sm">
+          წარმატებით დამატებულია!
+        </div>
+      )}
+
       <div>
         <label htmlFor="amount" className="block text-sm font-medium">
           თანხა
@@ -93,12 +59,12 @@ export async function AddTransactionForm() {
           id="amount"
           required
           step="0.01"
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          disabled={isPending}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50"
           placeholder="1000"
         />
       </div>
 
-      {/* Выбор кошелька */}
       <div>
         <label htmlFor="walletId" className="block text-sm font-medium">
           საფულე
@@ -107,8 +73,10 @@ export async function AddTransactionForm() {
           name="walletId"
           id="walletId"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          disabled={isPending}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50"
         >
+          <option value="">— აირჩიეთ —</option>
           {wallets.map((wallet) => (
             <option key={wallet.id} value={wallet.id}>
               {wallet.name}
@@ -117,7 +85,6 @@ export async function AddTransactionForm() {
         </select>
       </div>
 
-      {/* Выбор категории */}
       <div>
         <label htmlFor="categoryId" className="block text-sm font-medium">
           კატეგორია
@@ -126,10 +93,12 @@ export async function AddTransactionForm() {
           name="categoryId"
           id="categoryId"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          disabled={isPending}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50"
         >
+          <option value="">— აირჩიეთ —</option>
           <optgroup label="შემოსავალი">
-            {incomeCategories.map((cat) => (
+            {filteredIncomeCategories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
               </option>
@@ -145,25 +114,26 @@ export async function AddTransactionForm() {
         </select>
       </div>
 
-      {/* Заметки */}
       <div>
         <label htmlFor="notes" className="block text-sm font-medium">
-          დამატებითი ინფორმაცია (არაა აუცილებელი)
+          შენიშვნა (არაა აუცილებელი)
         </label>
         <input
           type="text"
           name="notes"
           id="notes"
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          placeholder="მაგ.ჯარიმა YJ175YJ"
+          disabled={isPending}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50"
+          placeholder="მაგ. ჯარიმა YJ175YJ"
         />
       </div>
 
       <button
         type="submit"
-        className="w-full rounded-md bg-indigo-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-indigo-700"
+        disabled={isPending}
+        className="w-full rounded-md bg-indigo-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-indigo-700 disabled:opacity-50"
       >
-        დამატება
+        {isPending ? 'მიმდინარეობს...' : 'დამატება'}
       </button>
     </form>
   );

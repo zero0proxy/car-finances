@@ -33,29 +33,23 @@ model Category {
 }
 
 model Transaction {
-  id        String   @id @default(cuid())
-  amount    Decimal
-  notes     String?
-  createdAt DateTime @default(now())
+  id                  String    @id @default(cuid())
+  amount              Decimal
+  type                TransactionType
+  notes               String?
+  createdAt           DateTime  @default(now())
+  walletId            String
+  categoryId          String?
+  driverId            String?
+  yandexTransactionId String?   @unique
+  yandexEarningKey    String?   @unique // ← НОВОЕ ПОЛЕ
 
-  // --- 🔥 НОВОЕ ПОЛЕ (ДЛЯ ПРЕДОТВРАЩЕНИЯ ДУБЛИКАТОВ) ---
-  yandexTransactionId String? @unique
+  wallet   Wallet   @relation(fields: [walletId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id])
+  driver   Driver?  @relation(fields: [driverId], references: [id])
 
-  walletId String
-  wallet   Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
-
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  
-  // 🔥 НОВЫЕ ПОЛЯ: Водитель (ОПЦИОНАЛЬНО, потому что не все транзакции от водителей)
-  driverId  String?
-  driver    Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
-
-  @@index([walletId])
-  @@index([categoryId])
   @@index([createdAt])
-  @@index([driverId]) // 🔥 НОВЫЙ ИНДЕКС
-  @@index([yandexTransactionId])
+  @@index([driverId])
 }
 
 model Driver {

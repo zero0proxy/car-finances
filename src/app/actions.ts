@@ -1,11 +1,10 @@
-// Файл: src/app/actions.ts
 'use server';
 
 import { prisma } from '@/lib/prisma';
 import { TransactionType } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { Decimal } from '@prisma/client/runtime/library';
-import { Driver } from '@prisma/client';
+import ExcelJS from 'exceljs';
 
 // --- YANDEX API КОНСТАНТЫ ---
 const YANDEX_FULL_CLID = 'taxi/park/e401f44327704c4f925abfabd07c6e86';
@@ -13,18 +12,33 @@ const YANDEX_PARK_ID = 'e401f44327704c4f925abfabd07c6e86';
 const YANDEX_API_KEY = 'CEyTqBABdsgHugLBmHjEHOcWjbSfyHWP';
 const YANDEX_BASE_URL = 'https://fleet-api.taxi.yandex.net';
 
-// --- Вспомогательные функции (без изменений) ---
+// --- УТИЛИТЫ (исправлено: startDate = new Date() для правильного периода) ---
+function getPeriodStart(period: 'day' | 'week' | 'month'): Date {
+  const now = new Date(); // Текущая дата
+  let startDate = new Date(now); // Копируем
+  if (period === 'day') {
+    startDate.setHours(0, 0, 0, 0); // Сегодня с 00:00
+  } else if (period === 'week') {
+    const day = startDate.getDay();
+    const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+    startDate.setDate(diff);
+    startDate.setHours(0, 0, 0, 0); // Начало недели
+  } else if (period === 'month') {
+    startDate.setDate(1); // 1-е число месяца
+    startDate.setHours(0, 0, 0, 0);
+  }
+  return startDate;
+}
 
+// --- ДЕЙСТВИЯ (без изменений) ---
 export async function deleteTransaction(
   transactionId: string,
   walletId: string,
   amountString: string,
   type: TransactionType
 ) {
-  // ... (код deleteTransaction без изменений) ...
   const amount = new Decimal(amountString);
-  const amountToReverse =
-    type === TransactionType.INCOME ? amount.negated() : amount;
+  const amountToReverse = type === TransactionType.INCOME ? amount.negated() : amount;
   try {
     await prisma.$transaction([
       prisma.wallet.update({
@@ -42,39 +56,28 @@ export async function deleteTransaction(
 }
 
 export type ReportData = {
-  category: string,
-  type: TransactionType,
-  notes: string,
-  amount: string,
-  date: string,
+  category: string;
+  type: TransactionType;
+  notes: string;
+  amount: string;
+  date: string;
 };
 
 export async function generateReport(
   period: 'day' | 'week' | 'month',
   reportType: TransactionType
 ): Promise<ReportData[]> {
-  // ... (код generateReport без изменений) ...
-  const startDate = new Date();
-  if (period === 'day') {
-    startDate.setHours(0, 0, 0, 0);
-  } else if (period === 'week') {
-    const day = startDate.getDay();
-    const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
-    startDate.setDate(diff);
-    startDate.setHours(0, 0, 0, 0);
-  } else if (period === 'month') {
-    startDate.setDate(1);
-    startDate.setHours(0, 0, 0, 0);
-  }
+  const startDate = getPeriodStart(period);
   const transactions = await prisma.transaction.findMany({
     where: {
       createdAt: { gte: startDate },
+      yandexEarningKey: null,
       category: { type: reportType },
     },
     include: { category: { select: { name: true, type: true } } },
     orderBy: { createdAt: 'asc' },
   });
-  const report: ReportData[] = transactions.map((tx) => {
+  return transactions.map((tx) => {
     const amountString =
       tx.category.type === TransactionType.INCOME
         ? tx.amount.toString()
@@ -87,14 +90,10 @@ export async function generateReport(
       amount: amountString,
     };
   });
-  return report;
 }
 
-export async function syncYandexDrivers(): Promise<{
-  success: boolean;
-  message: string;
-}> {
-  // ... (код syncYandexDrivers без изменений) ...
+// --- СИНХРОНИЗАЦИЯ ВОДИТЕЛЕЙ (без изменений) ---
+export async function syncYandexDrivers(): Promise<{ success: boolean; message: string }> {
   try {
     const url = `${YANDEX_BASE_URL}/v1/parks/driver-profiles/list`;
     const response = await fetch(url, {
@@ -120,24 +119,16 @@ export async function syncYandexDrivers(): Promise<{
     let updatedCount = 0;
     for (const profile of profiles) {
       const driverData = profile.driver_profile;
-      const fullName =
-        `${driverData.first_name || ''} ${driverData.last_name || ''}`.trim();
+      const fullName = `${driverData.first_name || ''} ${driverData.last_name || ''}`.trim();
       const phoneNumber = driverData.phones[0]?.number;
       const result = await prisma.driver.upsert({
         where: { yandexId: driverData.id },
         select: { id: true, createdAt: true, updatedAt: true },
         update: { name: fullName, phone: phoneNumber },
-        create: {
-          yandexId: driverData.id,
-          name: fullName,
-          phone: phoneNumber,
-        },
+        create: { yandexId: driverData.id, name: fullName, phone: phoneNumber },
       });
-      if (result.createdAt.getTime() === result.updatedAt.getTime()) {
-        createdCount++;
-      } else {
-        updatedCount++;
-      }
+      if (result.createdAt.getTime() === result.updatedAt.getTime()) createdCount++;
+      else updatedCount++;
     }
     revalidatePath('/');
     return {
@@ -146,47 +137,35 @@ export async function syncYandexDrivers(): Promise<{
     };
   } catch (error: any) {
     console.error('Ошибка синхронизации с Yandex:', error);
-    return {
-      success: false,
-      message: `Сбой синхронизации: ${error.message || 'Неизвестная ошибка.'}`,
-    };
+    return { success: false, message: `Сбой синхронизации: ${error.message}` };
   }
 }
 
-// --- 🔥 НОВАЯ ФУНКЦИЯ: СИНХРОНИЗАЦИЯ ДОХОДОВ 🔥 ---
-
-export async function syncYandexTransactions(): Promise<{
-  success: boolean;
-  message: string;
-}> {
+// --- ИСПРАВЛЕННАЯ СИНХРОНИЗАЦИЯ: partner_ride_fee = ТВОИ 6% ---
+export async function syncYandexEarnings(): Promise<{ success: boolean; message: string }> {
   try {
-    // 1. Находим "Кошелек" и "Категорию" по умолчанию в нашей базе
-    const defaultWallet = await prisma.wallet.findUnique({
-      where: { name: 'ბარათი' }, // 'Карта' на грузинском
-    });
-    const defaultCategory = await prisma.category.findUnique({
-      where: { name: 'იანდექსის საკომისიო' }, // 'Комиссия Yandex' на грузинском
-    });
+    console.log('=== СИНХРОНИЗАЦИЯ: ТВОИ 6% (partner_ride_fee) + АРЕНДА ===');
+    
+    const wallet = await prisma.wallet.findUnique({ where: { name: 'ბარათი' } });
+    const commCat = await prisma.category.findUnique({ where: { name: 'იანდექსის საკომისიო' } });
+    const rentalCat = await prisma.category.findUnique({ where: { name: 'ავტომობილის ქირაობა' } });
 
-    if (!defaultWallet || !defaultCategory) {
-      throw new Error(
-        'Не найден кошелек "ბარათი" или категория "იანდექსის საკომისიო". Сначала запустите "seed".'
-      );
+    if (!wallet || !commCat || !rentalCat) {
+      return { success: false, message: 'Нет кошелька или категорий.' };
     }
 
-    // 2. Устанавливаем диапазон дат (последние 24 часа)
-    const toDate = new Date();
-    const fromDate = new Date(toDate.getTime() - 24 * 60 * 60 * 1000);
+    const to = new Date();
+    const from = new Date(to);
+    from.setDate(to.getDate() - 30);
 
-    // 3. Формируем запрос к API Яндекса
     const url = `${YANDEX_BASE_URL}/v2/parks/transactions/list`;
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Accept-Language': 'ru',
-        'X-Park-ID': YANDEX_PARK_ID,
         'X-Client-ID': YANDEX_FULL_CLID,
         'X-API-Key': YANDEX_API_KEY,
+        'X-Park-ID': YANDEX_PARK_ID,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -194,103 +173,274 @@ export async function syncYandexTransactions(): Promise<{
           park: {
             id: YANDEX_PARK_ID,
             transaction: {
-              // Загружаем транзакции за последние 24 часа
               event_at: {
-                from: fromDate.toISOString(),
-                to: toDate.toISOString(),
+                from: from.toISOString(),
+                to: to.toISOString(),
               },
+              // ФИЛЬТР: только partner_ride_fee и аренда
+              category_id: { in: ['partner_ride_fee', 'rental_deduction', 'driver_deduction_rental'] },
             },
           },
         },
-        limit: 1000, // Максимум 1000 транзакций за раз
+        limit: 1000,
       }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Ошибка API Yandex: ${response.status} - ${errorText}`);
+      const err = await response.text();
+      return { success: false, message: `Ошибка API: ${response.status}` };
     }
 
     const data = await response.json();
-    const yandexTransactions: any[] = data.transactions || [];
-    let newTransactionsCount = 0;
+    const transactions = data.transactions || [];
+    console.log(`Получено транзакций: ${transactions.length}`);
 
-    // 4. Обрабатываем каждую транзакцию
-    for (const yandexTx of yandexTransactions) {
-      // --- ВАЖНЫЙ ФИЛЬТР ---
-      // Нам нужны ТОЛЬКО доходы водителей, а не списания парка.
-      // Это наша *догадка*. Возможно, 'order' - это то, что нам нужно.
-      // Если это не сработает, нам нужно будет посмотреть, какие 'category_id' приходят.
-      if (
-        yandexTx.category_id !== 'order' &&
-        yandexTx.category_id !== 'payment'
-      ) {
-        continue; // Пропускаем эту транзакцию (это комиссия, штраф и т.д.)
-      }
+    let newComm = 0;
+    let newRental = 0;
 
-      // 5. Проверяем, нет ли УЖЕ такой транзакции (защита от дубликатов)
-      const existingTx = await prisma.transaction.findUnique({
-        where: { yandexTransactionId: yandexTx.id },
-      });
+    for (const tx of transactions) {
+      console.log('Транзакция:', { id: tx.id, amount: tx.amount, category_id: tx.category_id });
 
-      if (existingTx) {
-        continue; // Эту транзакцию мы уже импортировали, пропускаем
-      }
-
-      // 6. Находим водителя в нашей базе
       const driver = await prisma.driver.findUnique({
-        where: { yandexId: yandexTx.driver_profile_id },
+        where: { yandexId: tx.driver_profile_id },
       });
+      if (!driver) continue;
 
-      if (!driver) {
-        console.warn(`Водитель ${yandexTx.driver_profile_id} не найден в базе, пропускаем.`);
-        continue; // Мы не знаем этого водителя, пропускаем
-      }
+      const key = `yandex_${tx.category_id}_${tx.id}`;
+      const exists = await prisma.transaction.findUnique({ where: { yandexEarningKey: key } });
+      if (exists) continue;
 
-      // 7. Готовим транзакцию для нашей базы
-      const amount = new Decimal(yandexTx.amount);
-      const notes = `Yandex: ${yandexTx.category_id || 'Доход'}. ID: ${
-        yandexTx.id
-      }`;
+      const rawAmount = new Decimal(tx.amount);
+      const amount = rawAmount.abs(); // Берем модуль — partner_ride_fee всегда отрицательный
 
-      // 8. Сохраняем транзакцию и обновляем баланс (в $transaction)
-      await prisma.$transaction([
-        // Запрос 1: Создаем транзакцию
-        prisma.transaction.create({
+      if (tx.category_id === 'partner_ride_fee') {
+        await prisma.transaction.create({
           data: {
             amount: amount,
-            notes: notes,
-            createdAt: new Date(yandexTx.event_at), // Дата из Яндекса
-            yandexTransactionId: yandexTx.id, // Наш "ключ" для защиты от дублей
-            walletId: defaultWallet.id,
-            categoryId: defaultCategory.id,
+            type: TransactionType.INCOME,
+            categoryId: commCat.id,
+            walletId: wallet.id,
             driverId: driver.id,
+            yandexEarningKey: key,
+            notes: `6% комиссия: ${driver.name}`,
+            createdAt: new Date(tx.event_at),
           },
-        }),
-        // Запрос 2: Обновляем баланс кошелька
-        prisma.wallet.update({
-          where: { id: defaultWallet.id },
+        });
+        newComm++;
+        console.log(`ЗАГРУЖЕНА КОМИССИЯ: +${amount} GEL от ${driver.name}`);
+      } 
+      else if (tx.category_id.includes('rental') || tx.category_id.includes('deduction')) {
+        await prisma.transaction.create({
           data: {
-            balance: {
-              increment: amount, // Прибавляем доход
-            },
+            amount: amount,
+            type: TransactionType.INCOME,
+            categoryId: rentalCat.id,
+            walletId: wallet.id,
+            driverId: driver.id,
+            yandexEarningKey: key,
+            notes: `Аренда авто: ${driver.name}`,
+            createdAt: new Date(tx.event_at),
           },
-        }),
-      ]);
-
-      newTransactionsCount++;
+        });
+        newRental++;
+        console.log(`ЗАГРУЖЕНА АРЕНДА: +${amount} GEL от ${driver.name}`);
+      }
     }
 
     revalidatePath('/');
-    return {
-      success: true,
-      message: `Синхронизация доходов завершена. Загружено ${newTransactionsCount} новых транзакций.`,
-    };
+    return { success: true, message: `Загружено: ${newComm} комиссий 6% + ${newRental} аренд.` };
   } catch (error: any) {
-    console.error('Ошибка синхронизации транзакций Yandex:', error);
-    return {
-      success: false,
-      message: `Сбой синхронизации: ${error.message || 'Неизвестная ошибка.'}`,
-    };
+    return { success: false, message: error.message };
+  }
+}
+
+// --- ИСПРАВЛЕННЫЙ EXCEL ДЛЯ КОМИССИЙ (с логами) ---
+export async function generateDriverExcelReport(
+  period: 'day' | 'week' | 'month'
+): Promise<Buffer> {
+  console.log(`=== ГЕНЕРАЦИЯ EXCEL КОМИССИЙ: ${period} ===`);
+  const startDate = getPeriodStart(period);
+  console.log(`Период: с ${startDate.toISOString()}`);
+
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      createdAt: { gte: startDate },
+      category: { name: 'იანდექსის საკომისიო' },
+      driverId: { not: null },
+    },
+    include: { driver: true, category: true },
+  });
+
+  console.log(`Найдено транзакций комиссий: ${transactions.length}`);
+
+  const byDriver = new Map<string, any>();
+  for (const tx of transactions) {
+    const d = tx.driver!;
+    const key = d.id;
+    if (!byDriver.has(key)) {
+      byDriver.set(key, {
+        name: d.name,
+        car: '—',
+        commission: new Decimal(0),
+      });
+    }
+    const row = byDriver.get(key);
+    row.commission = row.commission.plus(tx.amount);
+  }
+
+  const rows = Array.from(byDriver.values()).map(r => ({
+    'Водитель': r.name,
+    'Автомобиль': r.car,
+    'Комиссия 6%': r.commission.toString() + ' GEL',
+    'Чистый доход парка': r.commission.toString() + ' GEL',
+  }));
+
+  console.log(`Строк в Excel: ${rows.length}. Пример: ${rows[0]?.['Водитель'] || 'Пусто'}`);
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Комиссии 6%');
+  if (rows.length > 0) {
+    sheet.addTable({
+      name: 'Commissions',
+      ref: 'A1',
+      columns: Object.keys(rows[0]).map(name => ({ name })),
+      rows: rows.map(Object.values),
+    });
+  } else {
+    sheet.addRow(['Нет данных за период']);
+  }
+
+  return await workbook.xlsx.writeBuffer();
+}
+
+// --- ИСПРАВЛЕННЫЙ EXCEL ДЛЯ АРЕНДЫ (с логами) ---
+export async function generateRentalExcelReport(
+  period: 'day' | 'week' | 'month'
+): Promise<Buffer> {
+  console.log(`=== ГЕНЕРАЦИЯ EXCEL АРЕНДЫ: ${period} ===`);
+  const startDate = getPeriodStart(period);
+  console.log(`Период: с ${startDate.toISOString()}`);
+
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      createdAt: { gte: startDate },
+      category: { name: 'ავტომობილის ქირაობა' },
+      driverId: { not: null },
+    },
+    include: { driver: true },
+  });
+
+  console.log(`Найдено транзакций аренды: ${transactions.length}`);
+
+  const byDriver = new Map<string, any>();
+  for (const tx of transactions) {
+    const d = tx.driver!;
+    const key = d.id;
+    if (!byDriver.has(key)) {
+      byDriver.set(key, {
+        name: d.name,
+        rental: new Decimal(0),
+      });
+    }
+    const row = byDriver.get(key);
+    row.rental = row.rental.plus(tx.amount);
+  }
+
+  const rows = Array.from(byDriver.values()).map(r => ({
+    'Водитель': r.name,
+    'Аренда авто': r.rental.toString() + ' GEL',
+  }));
+
+  console.log(`Строк в Excel аренды: ${rows.length}. Пример: ${rows[0]?.['Водитель'] || 'Пусто'}`);
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Аренда авто');
+  if (rows.length > 0) {
+    sheet.addTable({
+      name: 'Rentals',
+      ref: 'A1',
+      columns: Object.keys(rows[0]).map(name => ({ name })),
+      rows: rows.map(Object.values),
+    });
+  } else {
+    sheet.addRow(['Нет данных за период']);
+  }
+
+  return await workbook.xlsx.writeBuffer();
+}
+
+// --- ОТЧЁТ ПО КОМИССИЯМ 6% (на странице) ---
+export async function generateCommissionReport(
+  period: 'day' | 'week' | 'month'
+): Promise<Array<{ driver: string; amount: string }>> {
+  const startDate = getPeriodStart(period);
+
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      createdAt: { gte: startDate },
+      category: { name: 'იანდექსის საკომისიო' },
+      driverId: { not: null },
+    },
+    include: { driver: true },
+  });
+
+  const byDriver = new Map<string, Decimal>();
+  for (const tx of transactions) {
+    const key = tx.driver!.id;
+    const current = byDriver.get(key) || new Decimal(0);
+    byDriver.set(key, current.plus(tx.amount));
+  }
+
+  return Array.from(byDriver.entries())
+    .map(([driverId, amount]) => {
+      const driver = transactions.find(t => t.driver!.id === driverId)?.driver!;
+      return {
+        driver: driver.name,
+        amount: amount.toFixed(2),
+      };
+    })
+    .sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount));
+}
+
+// --- ДОБАВЛЕНИЕ ТРАНЗАКЦИИ (ручное) ---
+export async function addTransaction(formData: FormData) {
+  'use server';
+
+  const amount = Number(formData.get('amount'));
+  const notes = formData.get('notes') as string;
+  const walletId = formData.get('walletId') as string;
+  const categoryId = formData.get('categoryId') as string;
+
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId },
+  });
+
+  if (!category) {
+    console.error('კატეგორია არ მოიძებნა');
+    return;
+  }
+
+  const amountToUpdate = category.type === TransactionType.INCOME ? amount : -amount;
+
+  try {
+    await prisma.$transaction([
+      prisma.transaction.create({
+        data: {
+          amount,
+          notes: notes || null,
+          walletId,
+          categoryId,
+          type: category.type,
+        },
+      }),
+      prisma.wallet.update({
+        where: { id: walletId },
+        data: { balance: { increment: amountToUpdate } },
+      }),
+    ]);
+
+    revalidatePath('/');
+  } catch (error) {
+    console.error('ტრანზაქციის დამატების დროს მოხდა შეცდომა:', error);
   }
 }

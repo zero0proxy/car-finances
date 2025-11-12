@@ -1,5 +1,4 @@
-// Файл: src/app/page.tsx
-
+// src/app/page.tsx
 import { prisma } from '@/lib/prisma';
 import { AddTransactionForm } from '@/components/AddTransactionForm';
 import { TransactionList } from '@/components/TransactionList';
@@ -7,8 +6,8 @@ import { IncomeStats } from '@/components/IncomeStats';
 import { TransactionType } from '@prisma/client';
 import { ReportGenerator } from '@/components/ReportGenerator';
 import { YandexSyncButton } from '@/components/YandexSyncButton';
-// 1. Импортируем новую кнопку
-import { YandexSyncTransactionsButton } from '@/components/YandexSyncTransactionsButton';
+import { YandexSyncEarningsButton } from '@/components/YandexSyncEarningsButton';
+import { CommissionReport } from '@/components/CommissionReport';
 
 async function getWallets() {
   const wallets = await prisma.wallet.findMany({
@@ -17,22 +16,33 @@ async function getWallets() {
   return wallets;
 }
 
+// Только ручные транзакции
 async function getTransactions() {
   const transactions = await prisma.transaction.findMany({
-    orderBy: {
-      createdAt: 'desc',
-    },
-    include: {
-      category: true,
-      wallet: true,
-    },
+    where: { yandexEarningKey: null },
+    orderBy: { createdAt: 'desc' },
+    include: { category: true, wallet: true },
   });
   return transactions;
+}
+
+// ДАННЫЕ ДЛЯ ФОРМЫ (выпадающие списки)
+async function getFormData() {
+  const [wallets, categories] = await Promise.all([
+    prisma.wallet.findMany({ select: { id: true, name: true } }),
+    prisma.category.findMany({ select: { id: true, name: true, type: true } }),
+  ]);
+
+  const incomeCategories = categories.filter(c => c.type === TransactionType.INCOME);
+  const expenseCategories = categories.filter(c => c.type === TransactionType.EXPENSE);
+
+  return { wallets, incomeCategories, expenseCategories };
 }
 
 export default async function HomePage() {
   const wallets = await getWallets();
   const transactions = await getTransactions();
+  const formData = await getFormData();
 
   return (
     <main className="container mx-auto max-w-2xl p-8 space-y-8">
@@ -42,7 +52,7 @@ export default async function HomePage() {
 
       {/* Блок Кошельков */}
       <div className="bg-white p-6 rounded-xl shadow-md">
-        <h2 className="text-2xl font-semibold mb-4">Кошельки</h2>
+        <h2 className="text-2xl font-semibold mb-4">საფულეები</h2>
         <ul className="space-y-3">
           {wallets.map((wallet) => (
             <li
@@ -52,9 +62,7 @@ export default async function HomePage() {
               <span className="text-lg font-medium">{wallet.name}</span>
               <span
                 className={`text-xl font-bold ${
-                  wallet.balance.isNegative()
-                    ? 'text-red-600'
-                    : 'text-green-600'
+                  wallet.balance.isNegative() ? 'text-red-600' : 'text-green-600'
                 }`}
               >
                 {Number(wallet.balance).toLocaleString('ka-GE', {
@@ -67,14 +75,18 @@ export default async function HomePage() {
         </ul>
       </div>
 
+      {/* Синхронизация */}
       <YandexSyncButton />
-      {/* 2. Добавляем новую кнопку */}
-      <YandexSyncTransactionsButton />
-      
+      <YandexSyncEarningsButton />
+
+      {/* Рапорты */}
       <ReportGenerator />
+      <CommissionReport />
 
-      <AddTransactionForm />
+      {/* РУЧНОЕ ДОБАВЛЕНИЕ */}
+      <AddTransactionForm {...formData} />
 
+      {/* История */}
       <TransactionList transactions={transactions} />
     </main>
   );

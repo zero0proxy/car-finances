@@ -1,4 +1,4 @@
-// Файл: src/components/TransactionList.tsx
+// src/components/TransactionList.tsx
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -18,11 +18,15 @@ export function TransactionList({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // ФИЛЬТР: ТОЛЬКО РУЧНЫЕ ТРАНЗАКЦИИ (yandexEarningKey === null)
+  const manualTransactions = transactions.filter(tx => !tx.yandexEarningKey);
+
   const visibleCount = 5;
   const visibleTransactions = isExpanded
-    ? transactions
-    : transactions.slice(0, visibleCount);
-  const showButton = transactions.length > visibleCount;
+    ? manualTransactions
+    : manualTransactions.slice(0, visibleCount);
+
+  const showButton = manualTransactions.length > visibleCount;
 
   const handleDelete = (
     txId: string,
@@ -40,15 +44,17 @@ export function TransactionList({
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md">
-      <h2 className="text-2xl font-semibold mb-4">ბოლო ოპერაციები</h2>
+      <h2 className="text-2xl font-semibold mb-4">ბოლო ოპერაციები (მხოლოდ ხელით)</h2>
+
       {isPending && (
         <p className="text-sm text-gray-500 text-center animate-pulse">
           ოპერაციის წაშლა...
         </p>
       )}
+
       <ul className="space-y-4">
-        {transactions.length === 0 && (
-          <p className="text-gray-500">ამჟამად არ არის არც ერთი ოპერაცია შესრულებული.</p>
+        {manualTransactions.length === 0 && (
+          <p className="text-gray-500">ამჟამად არ არის არც ერთი ხელით დამატებული ოპერაცია.</p>
         )}
 
         {visibleTransactions.map((tx) => {
@@ -68,7 +74,7 @@ export function TransactionList({
                   {tx.notes || <span className="italic">დამატებითი ინფორმაცია არ არის</span>}
                 </span>
                 <span className="text-xs text-gray-400 mt-1">
-                  {new Date(tx.createdAt).toLocaleString('ru-RU')}
+                  {new Date(tx.createdAt).toLocaleString('ka-GE')}
                 </span>
               </div>
 
@@ -81,7 +87,7 @@ export function TransactionList({
                   {isIncome ? '+' : '-'}
                   {Number(tx.amount).toLocaleString('ka-GE', {
                     style: 'currency',
-                    currency: 'GEL', // <-- ИЗМЕНЕНО
+                    currency: 'GEL',
                   })}
                 </span>
                 <span className="text-sm text-gray-500">{tx.wallet.name}</span>
@@ -127,7 +133,7 @@ export function TransactionList({
         >
           {isExpanded
             ? 'ჩაკეცვა'
-            : `მეტის ნახვა ${transactions.length - visibleCount}`}
+            : `მეტის ნახვა ${manualTransactions.length - visibleCount}`}
         </button>
       )}
     </div>
