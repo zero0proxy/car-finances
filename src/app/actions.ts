@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma';
 import { TransactionType } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { Decimal } from '@prisma/client/runtime/library';
-import ExcelJS from 'exceljs';
 
 // --- YANDEX API КОНСТАНТЫ ---
 const YANDEX_FULL_CLID = 'taxi/park/e401f44327704c4f925abfabd07c6e86';
@@ -257,121 +256,6 @@ export async function syncYandexEarnings(): Promise<{ success: boolean; message:
   } catch (error: any) {
     return { success: false, message: error.message };
   }
-}
-
-// --- ИСПРАВЛЕННЫЙ EXCEL ДЛЯ КОМИССИЙ (с логами) ---
-export async function generateDriverExcelReport(
-  period: 'day' | 'week' | 'month'
-): Promise<Buffer> {
-  console.log(`=== ГЕНЕРАЦИЯ EXCEL КОМИССИЙ: ${period} ===`);
-  const startDate = getPeriodStart(period);
-  console.log(`Период: с ${startDate.toISOString()}`);
-
-  const transactions = await prisma.transaction.findMany({
-    where: {
-      createdAt: { gte: startDate },
-      category: { name: 'იანდექსის საკომისიო' },
-      driverId: { not: null },
-    },
-    include: { driver: true, category: true },
-  });
-
-  console.log(`Найдено транзакций комиссий: ${transactions.length}`);
-
-  const byDriver = new Map<string, any>();
-  for (const tx of transactions) {
-    const d = tx.driver!;
-    const key = d.id;
-    if (!byDriver.has(key)) {
-      byDriver.set(key, {
-        name: d.name,
-        car: '—',
-        commission: new Decimal(0),
-      });
-    }
-    const row = byDriver.get(key);
-    row.commission = row.commission.plus(tx.amount);
-  }
-
-  const rows = Array.from(byDriver.values()).map(r => ({
-    'Водитель': r.name,
-    'Автомобиль': r.car,
-    'Комиссия 6%': r.commission.toString() + ' GEL',
-    'Чистый доход парка': r.commission.toString() + ' GEL',
-  }));
-
-  console.log(`Строк в Excel: ${rows.length}. Пример: ${rows[0]?.['Водитель'] || 'Пусто'}`);
-
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('Комиссии 6%');
-  if (rows.length > 0) {
-    sheet.addTable({
-      name: 'Commissions',
-      ref: 'A1',
-      columns: Object.keys(rows[0]).map(name => ({ name })),
-      rows: rows.map(Object.values),
-    });
-  } else {
-    sheet.addRow(['Нет данных за период']);
-  }
-
-  return await workbook.xlsx.writeBuffer();
-}
-
-// --- ИСПРАВЛЕННЫЙ EXCEL ДЛЯ АРЕНДЫ (с логами) ---
-export async function generateRentalExcelReport(
-  period: 'day' | 'week' | 'month'
-): Promise<Buffer> {
-  console.log(`=== ГЕНЕРАЦИЯ EXCEL АРЕНДЫ: ${period} ===`);
-  const startDate = getPeriodStart(period);
-  console.log(`Период: с ${startDate.toISOString()}`);
-
-  const transactions = await prisma.transaction.findMany({
-    where: {
-      createdAt: { gte: startDate },
-      category: { name: 'ავტომობილის ქირაობა' },
-      driverId: { not: null },
-    },
-    include: { driver: true },
-  });
-
-  console.log(`Найдено транзакций аренды: ${transactions.length}`);
-
-  const byDriver = new Map<string, any>();
-  for (const tx of transactions) {
-    const d = tx.driver!;
-    const key = d.id;
-    if (!byDriver.has(key)) {
-      byDriver.set(key, {
-        name: d.name,
-        rental: new Decimal(0),
-      });
-    }
-    const row = byDriver.get(key);
-    row.rental = row.rental.plus(tx.amount);
-  }
-
-  const rows = Array.from(byDriver.values()).map(r => ({
-    'Водитель': r.name,
-    'Аренда авто': r.rental.toString() + ' GEL',
-  }));
-
-  console.log(`Строк в Excel аренды: ${rows.length}. Пример: ${rows[0]?.['Водитель'] || 'Пусто'}`);
-
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('Аренда авто');
-  if (rows.length > 0) {
-    sheet.addTable({
-      name: 'Rentals',
-      ref: 'A1',
-      columns: Object.keys(rows[0]).map(name => ({ name })),
-      rows: rows.map(Object.values),
-    });
-  } else {
-    sheet.addRow(['Нет данных за период']);
-  }
-
-  return await workbook.xlsx.writeBuffer();
 }
 
 // --- ОТЧЁТ ПО КОМИССИЯМ 6% (ИСПРАВЛЕНО: null check + синтаксис) ---
