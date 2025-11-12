@@ -374,34 +374,37 @@ export async function generateRentalExcelReport(
   return await workbook.xlsx.writeBuffer();
 }
 
-// --- ОТЧЁТ ПО КОМИССИЯМ 6% (на странице) ---
+// --- ОТЧЁТ ПО КОМИССИЯМ 6% (ИСПРАВЛЕНО: null check + синтаксис) ---
 export async function generateCommissionReport(
   period: 'day' | 'week' | 'month'
 ): Promise<Array<{ driver: string; amount: string }>> {
   const startDate = getPeriodStart(period);
 
   const transactions = await prisma.transaction.findMany({
-  where: {
-    createdAt: { gte: startDate },
-    category: { name: 'იანდექსის საკომისიო' },
-    driverId: { not: null },
-  },
-  include: { driver: true, category: true },
-});
+    where: {
+      createdAt: { gte: startDate },
+      category: { name: 'იანდექსის საკომისიო' },
+      driverId: { not: null },
+    },
+    include: { driver: true, category: true },
+  });
 
-// ФИЛЬТР:
-.filter(tx => tx.category !== null && tx.driver !== null)
+  // ФИЛЬТР: убираем null
+  const validTransactions = transactions.filter(
+    (tx): tx is typeof tx & { category: NonNullable<typeof tx.category>; driver: NonNullable<typeof tx.driver> } =>
+      tx.category !== null && tx.driver !== null
+  );
 
   const byDriver = new Map<string, Decimal>();
-  for (const tx of transactions) {
-    const key = tx.driver!.id;
+  for (const tx of validTransactions) {
+    const key = tx.driver.id;
     const current = byDriver.get(key) || new Decimal(0);
     byDriver.set(key, current.plus(tx.amount));
   }
 
   return Array.from(byDriver.entries())
     .map(([driverId, amount]) => {
-      const driver = transactions.find(t => t.driver!.id === driverId)?.driver!;
+      const driver = validTransactions.find(t => t.driver.id === driverId)?.driver!;
       return {
         driver: driver.name,
         amount: amount.toFixed(2),
