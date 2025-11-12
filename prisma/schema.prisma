@@ -43,6 +43,8 @@ model Transaction {
   driverId            String?
   yandexTransactionId String?   @unique
   yandexEarningKey    String?   @unique // ← НОВОЕ ПОЛЕ
+  bonus Decimal?
+  deductionType String?
 
   wallet   Wallet   @relation(fields: [walletId], references: [id])
   category Category? @relation(fields: [categoryId], references: [id])

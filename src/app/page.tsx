@@ -8,6 +8,7 @@ import { ReportGenerator } from '@/components/ReportGenerator';
 import { YandexSyncButton } from '@/components/YandexSyncButton';
 import { YandexSyncEarningsButton } from '@/components/YandexSyncEarningsButton';
 import { CommissionReport } from '@/components/CommissionReport';
+import { MonthlyDriverReport } from '@/components/MonthlyDriverReport';
 
 async function getWallets() {
   const wallets = await prisma.wallet.findMany({
@@ -92,6 +93,7 @@ export default async function HomePage() {
       {/* Рапорты */}
       <ReportGenerator />
       <CommissionReport />
+      <MonthlyDriverReport />
 
       {/* РУЧНОЕ ДОБАВЛЕНИЕ */}
       <AddTransactionForm {...formData} />

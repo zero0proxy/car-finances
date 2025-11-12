@@ -339,3 +339,83 @@ export async function addTransaction(formData: FormData) {
     console.error('ტრანზაქციის დამატების დროს მოხდა შეცდომა:', error);
   }
 }
+
+// --- МЕСЯЧНЫЙ ОТЧЁТ ПО ВОДИТЕЛЯМ (как в Excel) ---
+export async function generateMonthlyDriverReport(
+  month: string // '2024-11' для ноября 2024
+): Promise<Array<{
+  driverName: string;
+  id: string;
+  totalIncome: string;
+  cash: string;
+  card: string;
+  tip: string;
+  promotions: string;
+  bonuses: string;
+  serviceFee: string;
+  deductions: string;
+  totalPaid: string;
+}>> {
+  const [year, monthNum] = month.split('-').map(Number);
+  const startDate = new Date(year, monthNum - 1, 1); // 1-е число месяца
+  const endDate = new Date(year, monthNum, 0, 23, 59, 59); // Последний день
+
+  // Получаем водителей
+  const drivers = await prisma.driver.findMany();
+
+  const report = await Promise.all(drivers.map(async (driver) => {
+    // Доходы из Yandex (комиссии 6%)
+    const yandexIncome = await prisma.transaction.aggregate({
+      where: {
+        driverId: driver.id,
+        category: { name: 'იანდექსის საკომისიო' },
+        createdAt: { gte: startDate, lte: endDate },
+      },
+      _sum: { amount: true },
+    });
+
+    // Ручные бонусы
+    const bonuses = await prisma.transaction.aggregate({
+      where: {
+        driverId: driver.id,
+        bonus: { not: null }, // Поле для бонусов
+        createdAt: { gte: startDate, lte: endDate },
+      },
+      _sum: { bonus: true },
+    });
+
+    // Вычеты (аренда, штрафы)
+    const deductions = await prisma.transaction.aggregate({
+      where: {
+        driverId: driver.id,
+        deductionType: { not: null },
+        createdAt: { gte: startDate, lte: endDate },
+      },
+      _sum: { amount: true },
+    });
+
+    // Итоговый доход водителя (до вычетов)
+    const totalIncome = yandexIncome._sum.amount || new Decimal(0);
+    const totalBonuses = bonuses._sum.bonus || new Decimal(0);
+    const totalDeductions = deductions._sum.amount || new Decimal(0);
+
+    // Итоговая выплата водителю
+    const totalPaid = totalIncome.add(totalBonuses).sub(totalDeductions).abs();
+
+    return {
+      driverName: driver.name,
+      id: driver.yandexId || '',
+      totalIncome: totalIncome.toString(),
+      cash: '0', // Ручной ввод или из Yandex cash_collected
+      card: '0', // Из Yandex card payments
+      tip: '0', // Из Yandex tip
+      promotions: '0', // Из Yandex promotions
+      bonuses: totalBonuses.toString(),
+      serviceFee: '6%', // Фикс, или сумма комиссий
+      deductions: totalDeductions.toString(),
+      totalPaid: totalPaid.toString(),
+    };
+  }));
+
+  return report.filter(r => parseFloat(r.totalIncome) > 0).sort((a, b) => parseFloat(b.totalIncome) - parseFloat(a.totalIncome));
+}
