@@ -5,10 +5,9 @@ import { useState, useTransition } from 'react';
 import { TransactionType } from '@prisma/client';
 import { deleteTransaction } from '@/app/actions';
 
-// ТИП: категория и кошелёк гарантированно не null
 type TransactionWithDetails = {
   id: string;
-  amount: number | string;
+  amount: number; // ← number, не Decimal
   notes: string | null;
   createdAt: Date | string;
   walletId: string;

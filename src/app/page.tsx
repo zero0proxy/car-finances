@@ -16,14 +16,24 @@ async function getWallets() {
   return wallets;
 }
 
-// Только ручные транзакции
+// Только ручные транзакции + Decimal → number + category не null
 async function getTransactions() {
   const transactions = await prisma.transaction.findMany({
     where: { yandexEarningKey: null },
     orderBy: { createdAt: 'desc' },
     include: { category: true, wallet: true },
   });
-  return transactions;
+
+  // ФИЛЬТР + КОНВЕРТАЦИЯ
+  return transactions
+    .filter(
+      (tx): tx is typeof tx & { category: NonNullable<typeof tx.category> } =>
+        tx.category !== null
+    )
+    .map(tx => ({
+      ...tx,
+      amount: Number(tx.amount), // ← Decimal → number
+    }));
 }
 
 // ДАННЫЕ ДЛЯ ФОРМЫ (выпадающие списки)
