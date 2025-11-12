@@ -2,12 +2,26 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Transaction, Category, Wallet, TransactionType } from '@prisma/client';
+import { TransactionType } from '@prisma/client';
 import { deleteTransaction } from '@/app/actions';
 
-type TransactionWithDetails = Transaction & {
-  category: Category;
-  wallet: Wallet;
+// ТИП: категория и кошелёк гарантированно не null
+type TransactionWithDetails = {
+  id: string;
+  amount: number | string;
+  notes: string | null;
+  createdAt: Date | string;
+  walletId: string;
+  yandexEarningKey: string | null;
+  category: {
+    id: string;
+    name: string;
+    type: TransactionType;
+  };
+  wallet: {
+    id: string;
+    name: string;
+  };
 };
 
 export function TransactionList({
@@ -18,15 +32,12 @@ export function TransactionList({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // ФИЛЬТР: ТОЛЬКО РУЧНЫЕ ТРАНЗАКЦИИ (yandexEarningKey === null)
-  const manualTransactions = transactions.filter(tx => !tx.yandexEarningKey);
-
+  // УБРАЛИ ФИЛЬТР — уже отфильтровано в getTransactions()
   const visibleCount = 5;
   const visibleTransactions = isExpanded
-    ? manualTransactions
-    : manualTransactions.slice(0, visibleCount);
-
-  const showButton = manualTransactions.length > visibleCount;
+    ? transactions
+    : transactions.slice(0, visibleCount);
+  const showButton = transactions.length > visibleCount;
 
   const handleDelete = (
     txId: string,
@@ -53,12 +64,14 @@ export function TransactionList({
       )}
 
       <ul className="space-y-4">
-        {manualTransactions.length === 0 && (
+        {transactions.length === 0 && (
           <p className="text-gray-500">ამჟამად არ არის არც ერთი ხელით დამატებული ოპერაცია.</p>
         )}
 
         {visibleTransactions.map((tx) => {
           const isIncome = tx.category.type === TransactionType.INCOME;
+          const amount = typeof tx.amount === 'string' ? parseFloat(tx.amount) : tx.amount;
+
           return (
             <li
               key={tx.id}
@@ -67,9 +80,7 @@ export function TransactionList({
               }`}
             >
               <div className="flex flex-col">
-                <span className="font-semibold text-lg">
-                  {tx.category.name}
-                </span>
+                <span className="font-semibold text-lg">{tx.category.name}</span>
                 <span className="text-sm text-gray-600">
                   {tx.notes || <span className="italic">დამატებითი ინფორმაცია არ არის</span>}
                 </span>
@@ -85,7 +96,7 @@ export function TransactionList({
                   }`}
                 >
                   {isIncome ? '+' : '-'}
-                  {Number(tx.amount).toLocaleString('ka-GE', {
+                  {amount.toLocaleString('ka-GE', {
                     style: 'currency',
                     currency: 'GEL',
                   })}
@@ -95,12 +106,7 @@ export function TransactionList({
 
               <button
                 onClick={() =>
-                  handleDelete(
-                    tx.id,
-                    tx.walletId,
-                    tx.amount.toString(),
-                    tx.category.type
-                  )
+                  handleDelete(tx.id, tx.walletId, amount.toString(), tx.category.type)
                 }
                 title="ოპერაციის წაშლა"
                 disabled={isPending}
@@ -114,11 +120,7 @@ export function TransactionList({
                   stroke="currentColor"
                   className="w-5 h-5"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </li>
@@ -133,7 +135,7 @@ export function TransactionList({
         >
           {isExpanded
             ? 'ჩაკეცვა'
-            : `მეტის ნახვა ${manualTransactions.length - visibleCount}`}
+            : `მეტის ნახვა ${transactions.length - visibleCount}`}
         </button>
       )}
     </div>
